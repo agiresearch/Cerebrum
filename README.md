@@ -452,12 +452,6 @@ To test your agent, use the run_agent command to run:
 ```bash
 run-agent --llm_name <llm_name> --llm_backend <llm_backend> --agent <your_agent_folder_path> --task <task_input>
 ```
-Replace the placeholders with your specific values:
-- `<llm_name>`: The name of the language model you want to use
-- `<llm_backend>`: The backend service for the language model
-- `<your_agent_folder_path>`: The path to your agent's folder
-- `<task_input>`: The task you want your agent to complete
-
 or you can run the agent using the source code in the cerebrum/example/run_agent
 ```bash
 python cerebrum/example/run_agent --llm_name <llm_name> --llm_backend <llm_backend> --agent <your_agent_folder_path> --task <task_input>
