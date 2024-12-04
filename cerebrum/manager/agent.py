@@ -11,6 +11,9 @@ import platformdirs
 import importlib.util
 import uuid
 
+import hashlib
+import os
+
 from cerebrum.manager.package import AgentPackage
 from cerebrum.utils.manager import get_newest_version
 
@@ -104,8 +107,32 @@ class AgentManager:
         return (
             self.cache_dir / author / name / f"{self._version_to_path(version)}.agent"
         )
+        
 
-    def _get_random_cache_path(self):
+    def path_to_hash(path, algorithm='sha256'):
+        # Normalize the path (convert backslashes to forward slashes)
+        normalized_path = os.path.normpath(path).replace(os.sep, '/')
+        
+        # Create the hash object based on the specified algorithm
+        if algorithm.lower() == 'md5':
+            hasher = hashlib.md5()
+        elif algorithm.lower() == 'sha1':
+            hasher = hashlib.sha1()
+        elif algorithm.lower() == 'sha256':
+            hasher = hashlib.sha256()
+        elif algorithm.lower() == 'sha512':
+            hasher = hashlib.sha512()
+        else:
+            raise ValueError(f"Unsupported algorithm: {algorithm}")
+        
+        # Convert the path to bytes and update the hasher
+        hasher.update(normalized_path.encode('utf-8'))
+        
+        # Return the hexadecimal representation of the hash
+        return hasher.hexdigest()
+
+
+    def _get_local_agent_cache_path(self):
         """
         Creates a randomly named folder inside the cache/cerebrum directory and returns its path.
         Uses platformdirs for correct cross-platform cache directory handling.
@@ -114,15 +141,16 @@ class AgentManager:
         cache_dir = platformdirs.user_cache_dir(appname="cerebrum")
 
         # Generate a random UUID for the folder name
-        random_name = str(uuid.uuid4())
+        # random_name = str(uuid.uuid4())
+        hash_name = self.path_to_hash(cache_dir)
 
         # Create the full path
-        random_folder_path = os.path.join(cache_dir, random_name)
+        folder_path = os.path.join(cache_dir, hash_name)
 
         # Create the directory and any necessary parent directories
-        os.makedirs(random_folder_path, exist_ok=True)
+        os.makedirs(folder_path, exist_ok=True)
 
-        return Path(random_folder_path) / f"local.agent"
+        return Path(folder_path) / f"local.agent"
 
     def _save_agent_to_cache(self, agent_data: Dict, cache_path: Path):
         agent_package = AgentPackage(cache_path)
@@ -262,10 +290,12 @@ class AgentManager:
                 )
                 self.download_agent(author, name, version)
         else:
+            print("Loading local agent...")
             local_agent_data = self.package_agent(path)
-            random_path = self._get_random_cache_path()
-            self._save_agent_to_cache(local_agent_data, random_path)
-            agent_path = f"{random_path}"
+            local_agent_cache_path = self._get_local_agent_cache_path()
+            print(f"Local agent cache path: {local_agent_cache_path}")
+            self._save_agent_to_cache(local_agent_data, local_agent_cache_path)
+            agent_path = f"{local_agent_cache_path}"
 
         agent_package = AgentPackage(agent_path)
         agent_package.load()

@@ -88,7 +88,8 @@ class Cerebrum:
         if "factory" not in self._components_initialized:
             raise ValueError(
                 "Agent factory must be initialized before submitting agents")
-
+        # breakpoint()
+        # print(agent_id, agent_config)
         return self._post("/agents/submit", {
             "agent_id": agent_id,
             "agent_config": agent_config

@@ -156,7 +156,7 @@ def main():
     )
     parser.add_argument(
         "--base-url",
-        default="https://my.aios.foundation",
+        default="https://app.aios.foundation",
         help="Base URL for agent loading"
     )
     

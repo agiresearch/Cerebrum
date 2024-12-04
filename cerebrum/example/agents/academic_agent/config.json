@@ -5,7 +5,7 @@
         "Help users find relevant research papers, summarize key findings, and generate potential research questions."
     ],
     "tools": [
-        "example/arxiv"
+        "/common/home/km1558/projects/agiresearch/Cerebrum/example/tools/arxiv"
     ],
     "meta": {
         "author": "example",

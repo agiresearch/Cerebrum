@@ -14,9 +14,12 @@ class BaseAgent:
         config.global_client = Cerebrum()
         # self.send_request = AutoLLM.from_dynamic().process
         self.send_request = None
+        # print(self.config)
 
         self.tools, self.tool_info = AutoTool.from_batch_preload(self.config["tools"]).values()
-
+        
+        # breakpoint()
+        print(f"{self.tools, self.tool_info}")
 
     # def _load_config(self, dir: str):
     #     # script_path = os.path.abspath(__file__)

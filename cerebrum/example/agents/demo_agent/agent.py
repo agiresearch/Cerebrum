@@ -163,9 +163,7 @@ class DemoAgent(BaseAgent):
                     "agent_name": self.agent_name,
                     "result": "Failed to generate a valid workflow in the given times.",
                     "rounds": self.rounds,
-
                 }
                 
         except Exception as e:
-
             return {}

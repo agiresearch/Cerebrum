@@ -41,7 +41,8 @@ exclude = [
 files = ["requirements.txt"]
 
 [project.scripts]
-run-agent = "cerebrum.example.run_agent:main"
+run-local-agent = "cerebrum.example.run_local_agent:main"
+run-hub-agent = "cerebrum.example.run_hub_agent:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["cerebrum"]
