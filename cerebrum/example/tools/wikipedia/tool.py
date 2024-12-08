@@ -1,6 +1,7 @@
 from cerebrum.tool.base import BaseTool
-# from langchain_core.documents import Document
+import wikipedia
 from typing import Optional, Any
+
 class Wikipedia(BaseTool):
     """Wikipedia tool, refactored from langchain.
 
@@ -21,23 +22,24 @@ class Wikipedia(BaseTool):
 
     def build_client(self):
         try:
-            import cerebrum.example.tools.wikipedia.tool as tool
-
-            tool.set_lang(self.lang)
-
+            wikipedia.set_lang(self.lang)
+            return wikipedia
         except ImportError:
             raise ImportError(
                 "Could not import wikipedia python package. "
                 "Please install it with `pip install wikipedia`."
             )
-        return tool
+
+    def _fetch_page(self, page_title: str) -> Optional[Any]:
+        """Fetch a Wikipedia page."""
+        try:
+            return self.wiki_client.page(page_title)
+        except Exception:
+            return None
 
     def run(self, params) -> str:
         """Run Wikipedia search and get page summaries."""
         query = params["query"]
-        # if not isinstance(query, dict) or 'query' not in query:
-        #     raise TypeError("Query must be a dictionary with a 'query' key")
-        # query_str = query['query'][:self.WIKIPEDIA_MAX_QUERY_LENGTH]  # Extract and slice the query string
         page_titles = self.wiki_client.search(query, results=self.top_k_results)
         summaries = []
         for page_title in page_titles[: self.top_k_results]:
@@ -54,22 +56,22 @@ class Wikipedia(BaseTool):
 
     def get_tool_call_format(self):
         tool_call_format = {
-			"type": "function",
-			"function": {
-				"name": "wikipedia",
-				"description": "Search information on the Wikipedia",
-				"parameters": {
-					"type": "object",
-					"properties": {
-						"query": {
-							"type": "string",
-							"description": "Query used for searching information on the Wikipedia"
-						}
-					},
-					"required": [
-						"query"
-					]
-				}
-			}
-		}
+            "type": "function",
+            "function": {
+                "name": "wikipedia",
+                "description": "Search information on the Wikipedia",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Query used for searching information on the Wikipedia"
+                        }
+                    },
+                    "required": [
+                        "query"
+                    ]
+                }
+            }
+        }
         return tool_call_format
