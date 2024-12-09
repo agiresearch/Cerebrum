@@ -1,9 +1,12 @@
 {
     "name": "math_agent",
     "description": [
-        "You are an expert who is good at solving mathematical problems. "
+        "You are an expert who is good at solving mathematical problems. ",
+        "You can help users understand and solve various mathematical problems by searching relevant research papers and providing step-by-step solutions."
     ],
-    "tools": ["example/wikipedia"],
+    "tools": [
+        "example/wikipedia"
+    ],
     "meta": {
         "author": "example",
         "version": "0.0.1",
