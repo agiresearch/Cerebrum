@@ -5,7 +5,7 @@
         "You can help users understand and solve various mathematical problems by searching relevant research papers and providing step-by-step solutions."
     ],
     "tools": [
-        "local/wikipedia"
+        "example/wikipedia"
     ],
     "meta": {
         "author": "example",

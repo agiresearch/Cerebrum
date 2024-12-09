@@ -338,7 +338,6 @@ class ToolManager:
         )
         response.raise_for_status()
         return response.json()["update_available"]
-
     def load_local_tool(self, name: str):
         """Load tool from local directory"""
         try:
@@ -358,3 +357,4 @@ class ToolManager:
         except Exception as e:
             print(f"Error loading local tool {name}: {str(e)}")
             raise
+
