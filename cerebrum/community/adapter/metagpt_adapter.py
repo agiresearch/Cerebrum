@@ -1,5 +1,6 @@
 # Modify BaseLLM method in metagpt, create fake configuration file
 # Adapte metagpt to run LLM in aios
+import os
 from typing import Union, Optional
 from .adapter import add_framework_adapter, get_request_func
 from ...llm.communication import LLMQuery
@@ -10,13 +11,10 @@ try:
     from metagpt.logs import logger as metagpt_logger
 
 except ImportError:
-    pass
-    # raise ImportError(
-    #     "Could not import metagpt python package. "
-    #     "Please install it with `pip install --upgrade metagpt`."
-    # )
-
-send_request = get_request_func()
+    raise ImportError(
+        "Could not import metagpt python package. "
+        "Please install it with `pip install --upgrade metagpt`."
+    )
 
 
 @add_framework_adapter("MetaGPT")
@@ -30,6 +28,10 @@ def prepare_metagpt():
     """
     # create fake configuration file
     prepare_metagpt_config()
+
+    # check root env
+    if not os.environ.get("METAGPT_PROJECT_ROOT"):
+        raise ValueError("Environment variable `METAGPT_PROJECT_ROOT` must be set")
 
     BaseLLM.aask = adapter_aask
 
@@ -65,10 +67,11 @@ async def adapter_acompletion_text(
 ) -> str:
     """Asynchronous version of completion. Return str. Support stream-print"""
     if stream:
-        print("(AIOS does not support stream mode currently."
+        print("(AIOS does not support stream mode currently. "
               "The stream mode has been automatically set to False.)")
 
     # call aios for response
+    send_request = get_request_func()
     response = send_request(
         query=LLMQuery(
             messages=messages,

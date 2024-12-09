@@ -10,13 +10,12 @@ from dataclasses import dataclass
 try:
     from interpreter import interpreter
 
-except ImportError:
+except ImportError as e:
+    print(e)
     raise ImportError(
         "Could not import interpreter python package. "
         "Please install it with `pip install open-interpreter`."
     )
-
-send_request = get_request_func()
 
 
 @add_framework_adapter("Open-Interpreter")
@@ -27,6 +26,7 @@ def prepare_interpreter():
     try:
         # Set the completion function in the interpreter
         interpreter.llm.completions = adapter_aios_completions
+        interpreter.auto_run = True
 
     except Exception as e:
         print("Interpreter prepare failed: " + str(e))
@@ -54,7 +54,7 @@ def adapter_aios_completions(**params):
 
     if params.get("stream", False) is True:
         # TODO: AIOS not supprt stream mode
-        print("(AIOS does not support stream mode currently."
+        print("(AIOS does not support stream mode currently. "
               "The stream mode has been automatically set to False)")
         params["stream"] = False
 
@@ -64,6 +64,7 @@ def adapter_aios_completions(**params):
 
     for attempt in range(attempts):
         try:
+            send_request = get_request_func()
             response = send_request(
                 query=LLMQuery(
                     messages=params['messages'],

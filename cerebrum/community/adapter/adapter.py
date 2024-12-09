@@ -37,8 +37,9 @@ def prepare_framework(framework_type: FrameworkType):
         framework_type (str): The type of framework to prepare.
     """
     if framework_type.value not in FRAMEWORK_ADAPTER:
-        print(f"Framework {framework_type.value} are not supported.", "error")
+        print(f"[ERROR] Framework {framework_type.value} are not supported")
     else:
+        print(f"Prepare framework {framework_type.value} sucessfully.")
         adapter = FRAMEWORK_ADAPTER[framework_type.value]
         adapter()
 
@@ -47,8 +48,10 @@ REQUEST_FUNC = None
 
 
 def set_request_func(request_func: Callable, agent_name: str):
-    def request_wrapper(_query):
-        return request_func(agent_name, _query)
+    def request_wrapper(query):
+        return request_func(agent_name=agent_name, query=query)
+
+    global REQUEST_FUNC
     REQUEST_FUNC = request_wrapper
 
 

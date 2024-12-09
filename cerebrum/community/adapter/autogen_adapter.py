@@ -39,11 +39,10 @@ try:
     from autogen.oai.openai_utils import get_key
     from autogen.runtime_logging import logging_enabled, log_new_wrapper, log_chat_completion
 except ImportError:
-    pass
-    # raise ImportError(
-    #     "Could not import autogen python package. "
-    #     "Please install it with `pip install pyautogen`."
-    # )
+    raise ImportError(
+        "Could not import autogen python package. "
+        "Please install it with `pip install autogen-agentchat~=0.2`."
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +69,7 @@ def prepare_autogen_0_2():
     ConversableAgent.update_tool_signature = adapter_update_tool_signature
     ConversableAgent.__init__ = adapter_autogen_agent_init
 
-    logger.log("AutoGen prepare success\n", "info")
+    print("AutoGen prepare success")
 
 
 def adapter_autogen_agent_init(
@@ -472,9 +471,6 @@ def adapter_update_tool_signature(self, tool_sig: Union[str, Dict], is_remove: N
     )
 
 
-send_request = get_request_func()
-
-
 def adapter_autogen_client_init(self, *,
                                 config_list: Optional[List[Dict[str, Any]]] = None,
                                 agent_name: Optional[str],
@@ -582,6 +578,7 @@ def adapter_client_create(self, **config: Any) -> ModelClient.ModelClientRespons
                     continue  # filter is not passed; try the next config
         try:
             request_ts = get_current_ts()
+            send_request = get_request_func()
             response = send_request(
                 query=LLMQuery(
                     messages=params['messages'],

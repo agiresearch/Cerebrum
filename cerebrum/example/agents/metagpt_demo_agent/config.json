@@ -1,5 +1,5 @@
 {
-    "name": "interpreter_demo_agent",
+    "name": "metagpt_demo_agent",
     "description": [],
     "tools": [],
     "meta": {
@@ -9,6 +9,6 @@
     },
     "build": {
         "entry": "agent.py",
-        "module": "OpenInterpreterAgent"
+        "module": "MetaGPTAgent"
     }
 }
