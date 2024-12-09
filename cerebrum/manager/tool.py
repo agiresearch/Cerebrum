@@ -136,21 +136,21 @@ class ToolManager:
         """Load a tool dynamically and return its class and configuration."""
         try:
             if local:
-                # 直接从本地工具目录加载
+                # Load directly from local tools directory
                 tool_path = self.local_tools_dir / name
                 if not tool_path.exists():
                     raise FileNotFoundError(f"Local tool not found: {name}")
                 
-                # 读取配置文件
+                # Read configuration file
                 config_path = tool_path / "config.json"
                 with open(config_path) as f:
                     tool_config = json.load(f)
                 
-                # 获取入口文件和模块名
+                # Get entry point and module name
                 entry_point = tool_config["build"]["entry"]
                 module_name = tool_config["build"]["module"]
                 
-                # 将工具目录添加到sys.path
+                # Add tool directory to sys.path
                 current_path = str(Path.cwd())
                 if current_path not in sys.path:
                     sys.path.insert(0, current_path)
@@ -158,7 +158,7 @@ class ToolManager:
                 sys.path.insert(0, str(tool_path))
                 
                 try:
-                    # 加载模块
+                    # Load module
                     spec = importlib.util.spec_from_file_location(
                         module_name,
                         str(tool_path / entry_point),
@@ -168,22 +168,22 @@ class ToolManager:
                     sys.modules[module_name] = module
                     spec.loader.exec_module(module)
                     
-                    # 获取工具类
+                    # Get tool class
                     tool_class = getattr(module, module_name)
                     return tool_class, tool_config
                     
                 finally:
-                    # 清理sys.path
+                    # Clean up sys.path
                     sys.path.pop(0)
                     if current_path == sys.path[0]:
                         sys.path.pop(0)
                     
-                    # 从sys.modules中移除
+                    # Remove from sys.modules
                     if module_name in sys.modules:
                         del sys.modules[module_name]
                     
             else:
-                # 原有的远程工具加载逻辑
+                # Original remote tool loading logic
                 if version is None:
                     cached_versions = self._get_cached_versions(author, name)
                     version = self._get_newest_version(cached_versions)
@@ -197,7 +197,6 @@ class ToolManager:
                 tool_package = ToolPackage(tool_path)
                 tool_package.load()
                 
-                # 剩余的远程工具加载代码...
                 
         except Exception as e:
             print(f"Error loading tool {name}: {str(e)}")
