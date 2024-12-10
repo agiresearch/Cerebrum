@@ -93,7 +93,7 @@ class Arxiv(BaseTool):
         tool_call_format = {
             "type": "function",
             "function": {
-                "name": "example/arxiv",
+                "name": "demo_author/arxiv",
                 "description": "Query articles or topics in arxiv",
                 "parameters": {
                     "type": "object",

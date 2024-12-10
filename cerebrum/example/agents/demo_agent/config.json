@@ -1,0 +1,19 @@
+{
+    "name": "demo_agent",
+    "description": [
+        "You are an academic research assistant. ",
+        "Help users find relevant research papers, summarize key findings, and generate potential research questions."
+    ],
+    "tools": [
+        "demo_author/arxiv"
+    ],
+    "meta": {
+        "author": "demo_author",
+        "version": "0.0.1",
+        "license": "CC0"
+    },
+    "build": {
+        "entry": "agent.py",
+        "module": "DemoAgent"
+    }
+}

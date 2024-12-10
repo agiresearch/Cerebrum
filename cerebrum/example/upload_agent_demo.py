@@ -10,7 +10,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    manager = AgentManager('https://my.aios.foundation')
+    manager = AgentManager('https://app.aios.foundation')
 
     agent_package = manager.package_agent(args.agent_path)
 

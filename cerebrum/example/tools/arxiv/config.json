@@ -4,7 +4,7 @@
         "The arxiv tool that can be used to search for papers on arxiv"
     ],
     "meta": {
-        "author": "example",
+        "author": "demo_author",
         "version": "1.0.6",
         "license": "CC0"
     },

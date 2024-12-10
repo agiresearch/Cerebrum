@@ -10,8 +10,9 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    manager = ToolManager('https://my.aios.foundation')
+    manager = ToolManager('https://app.aios.foundation')
 
     tool_package = manager.package_tool(args.tool_path)
 
+    # print(tool_package)
     manager.upload_tool(tool_package)

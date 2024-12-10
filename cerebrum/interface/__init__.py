@@ -21,11 +21,13 @@ class AutoLLM:
 
 
 class AutoTool:
-    TOOL_MANAGER = ToolManager('https://my.aios.foundation')
+    TOOL_MANAGER = ToolManager('https://app.aios.foundation')
 
     @classmethod
     def from_preloaded(cls, tool_name: str):
-        if tool_name.split('/')[0] != 'core':
+        n_slash = tool_name.count('/')
+        if n_slash == 1: # load from author/name
+        # if tool_name.split('/')[0] != 'core':
             author, name, version = cls.TOOL_MANAGER.download_tool(
                 author=tool_name.split('/')[0],
                 name=tool_name.split('/')[1]
