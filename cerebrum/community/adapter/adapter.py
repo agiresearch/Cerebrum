@@ -5,6 +5,11 @@ from typing import Callable
 
 
 class FrameworkType(Enum):
+    """
+    Enum for the types of frameworks that AIOS supports.
+
+    This Enum contains the types of frameworks that AIOS supports.
+    """
     MetaGPT = "MetaGPT"
     OpenInterpreter = "Open-Interpreter"
     AutoGen = "AutoGen~0.2"
@@ -14,6 +19,18 @@ FRAMEWORK_ADAPTER = {}
 
 
 def add_framework_adapter(framework_type: str):
+    """
+    Decorator to register a framework adapter function.
+
+    This function takes a framework type as an argument and returns a decorator.
+    The returned decorator can be used to wrap a function, which will then be
+    registered as the adapter for the specified framework type in the global
+    FRAMEWORK_ADAPTER dictionary.
+
+    Args:
+        framework_type (str): The type of framework for which the adapter function
+        is being registered.
+    """
     def add_framework_adapter_helper(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):

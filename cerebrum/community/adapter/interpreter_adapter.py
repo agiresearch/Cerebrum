@@ -3,6 +3,7 @@
 import json
 import sys
 
+from . import FrameworkType
 from .adapter import add_framework_adapter, get_request_func
 from cerebrum.llm.communication import LLMQuery
 from dataclasses import dataclass
@@ -18,7 +19,7 @@ except ImportError as e:
     )
 
 
-@add_framework_adapter("Open-Interpreter")
+@add_framework_adapter(FrameworkType.OpenInterpreter.value)
 def prepare_interpreter():
     """Prepare the interpreter for running LLM in aios.
     """

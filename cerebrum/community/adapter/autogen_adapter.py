@@ -7,6 +7,7 @@ from collections import defaultdict
 from termcolor import colored
 from typing import Union, List, Optional, Callable, Dict, Literal, Any, Tuple
 
+from cerebrum.community.adapter.adapter import FrameworkType
 from cerebrum.community.adapter.adapter import add_framework_adapter, get_request_func
 from openai import APITimeoutError, APIError
 
@@ -47,7 +48,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-@add_framework_adapter("AutoGen~0.2")
+@add_framework_adapter(FrameworkType.AutoGen.value)
 def prepare_autogen_0_2():
     """
     Replace OpenAIWrapper and ConversableAgent methods with aios's implementation.

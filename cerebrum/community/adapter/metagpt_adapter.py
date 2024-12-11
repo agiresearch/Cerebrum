@@ -2,6 +2,8 @@
 # Adapte metagpt to run LLM in aios
 import os
 from typing import Union, Optional
+
+from . import FrameworkType
 from .adapter import add_framework_adapter, get_request_func
 from ...llm.communication import LLMQuery
 
@@ -17,7 +19,7 @@ except ImportError:
     )
 
 
-@add_framework_adapter("MetaGPT")
+@add_framework_adapter(FrameworkType.MetaGPT.value)
 def prepare_metagpt():
     """
     Prepare the metagpt module to run on aios.
