@@ -48,6 +48,16 @@ REQUEST_FUNC = None
 
 
 def set_request_func(request_func: Callable, agent_name: str):
+    """
+    Set the request function for the AIOS adapter.
+
+    Args:
+        request_func (Callable): The function to handle requests.
+        agent_name (str): The name of the agent.
+
+    Returns:
+        None
+    """
     def request_wrapper(query):
         return request_func(agent_name=agent_name, query=query)
 
@@ -56,4 +66,10 @@ def set_request_func(request_func: Callable, agent_name: str):
 
 
 def get_request_func():
+    """
+    Get the request function set by the AIOS adapter.
+
+    Returns:
+        Callable: The function to handle requests.
+    """
     return REQUEST_FUNC

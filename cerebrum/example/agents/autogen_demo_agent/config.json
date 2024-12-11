@@ -1,10 +1,10 @@
 {
     "name": "autogen_demo_agent",
-    "description": [],
+    "description": ["A demo for autogen run on AIOS."],
     "tools": [],
     "meta": {
-        "author": "example",
-        "version": "1.0.0",
+        "author": "autogen",
+        "version": "0.0.1",
         "license": "CC0"
     },
     "build": {
