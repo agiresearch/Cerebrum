@@ -3,7 +3,7 @@
 import os
 from typing import Union, Optional
 
-from . import FrameworkType
+from cerebrum.community.adapter.adapter import FrameworkType
 from .adapter import add_framework_adapter, get_request_func
 from ...llm.communication import LLMQuery
 

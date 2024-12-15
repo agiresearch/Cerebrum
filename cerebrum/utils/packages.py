@@ -37,6 +37,3 @@ def is_open_interpreter_available() -> bool:
 def is_metagpt_available() -> bool:
     return _is_package_available('metagpt')
 
-
-if __name__ == '__main__':
-    print(is_open_interpreter_available())

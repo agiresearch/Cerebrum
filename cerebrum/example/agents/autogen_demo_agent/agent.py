@@ -21,7 +21,8 @@ class AutoGenAgent(BaseAgent):
 
         cathy = ConversableAgent(
             "cathy",
-            system_message="Your name is Cathy and you are a math teacher.",
+            system_message="Your name is Cathy and you are a teacher. You will try to teach a student how to "
+                           "solve problem.",
             human_input_mode="NEVER",  # Never ask for human input.
         )
 
@@ -32,11 +33,12 @@ class AutoGenAgent(BaseAgent):
         )
 
         # Let the assistant start the conversation.  It will end when the user types exit.
-        final_result = joe.initiate_chat(cathy, message=self.task_input, max_turns=4)
+        final_result = joe.initiate_chat(cathy, message=self.task_input, max_turns=3)
+        chat_history = final_result.chat_history
 
         self.rounds += 1
         return {
             "agent_name": self.agent_name,
-            "result": final_result,
+            "result": chat_history,
             "rounds": self.rounds,
         }

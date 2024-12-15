@@ -3,7 +3,7 @@
 import json
 import sys
 
-from . import FrameworkType
+from cerebrum.community.adapter.adapter import FrameworkType
 from .adapter import add_framework_adapter, get_request_func
 from cerebrum.llm.communication import LLMQuery
 from dataclasses import dataclass
@@ -12,7 +12,6 @@ try:
     from interpreter import interpreter
 
 except ImportError as e:
-    print(e)
     raise ImportError(
         "Could not import interpreter python package. "
         "Please install it with `pip install open-interpreter`."
@@ -31,8 +30,6 @@ def prepare_interpreter():
 
     except Exception as e:
         print("Interpreter prepare failed: " + str(e))
-
-    print("Open-Interpreter prepare success")
 
 
 @dataclass
