@@ -1,0 +1,14 @@
+{
+    "name": "interpreter_demo_agent",
+    "description": ["A demo agent for interpreter run on AIOS."],
+    "tools": [],
+    "meta": {
+        "author": "open-interpreter",
+        "version": "0.0.1",
+        "license": "CC0"
+    },
+    "build": {
+        "entry": "agent.py",
+        "module": "OpenInterpreterAgent"
+    }
+}

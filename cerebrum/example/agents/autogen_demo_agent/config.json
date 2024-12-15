@@ -1,0 +1,14 @@
+{
+    "name": "autogen_demo_agent",
+    "description": ["A demo for autogen run on AIOS."],
+    "tools": [],
+    "meta": {
+        "author": "autogen",
+        "version": "0.0.2",
+        "license": "CC0"
+    },
+    "build": {
+        "entry": "agent.py",
+        "module": "AutoGenAgent"
+    }
+}

@@ -124,6 +124,7 @@ def main():
     )
     parser.add_argument(
         "--aios_kernel_url",
+        default = "http://35.232.56.61:8000",
         required=True
     )
 

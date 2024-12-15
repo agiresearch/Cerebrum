@@ -5,7 +5,7 @@ from cerebrum.runtime.process import LLMProcessor, RunnableAgent
 from .. import config
  
 class AutoAgent:
-    AGENT_MANAGER = AgentManager('https://my.aios.foundation')
+    AGENT_MANAGER = AgentManager('https://app.aios.foundation')
  
     @classmethod
     def from_preloaded(cls, agent_name: str):
@@ -24,27 +24,24 @@ class AutoTool:
     TOOL_MANAGER = ToolManager('https://app.aios.foundation')
 
     @classmethod
-    def from_preloaded(cls, tool_string: str):
-        try:
-            # Parse tool string
-            if '/' in tool_string:
-                author, name = tool_string.split('/')
-            else:
-                # If no '/', treat as local tool
-                author = "local"
-                name = tool_string
-            
-            tool_path = cls.TOOL_MANAGER.local_tools_dir / name
-            if tool_path.exists():
-                config = cls.TOOL_MANAGER.load_local_tool(name)
-                version = config["meta"]["version"]
-                return cls.TOOL_MANAGER.load_tool(local=True, name=name, version=version)[0]()
-            
-            author, name, version = cls.TOOL_MANAGER.download_tool(author, name)
-            return cls.TOOL_MANAGER.load_tool(author, name, version)[0]()
-        except Exception as e:
-            print(f"Error loading tool {tool_string}: {str(e)}")
-            raise
+    def from_preloaded(cls, tool_name: str):
+        n_slash = tool_name.count('/')
+        if n_slash == 1: # load from author/name
+        # if tool_name.split('/')[0] != 'core':
+            try:
+                author, name, version = cls.TOOL_MANAGER.download_tool(
+                    author=tool_name.split('/')[0],
+                    name=tool_name.split('/')[1]
+                )
+                tool, _ = cls.TOOL_MANAGER.load_tool(author, name, version)
+            except:
+                print('reload',tool_name.split('/')[1])
+                tool, _ = cls.TOOL_MANAGER.load_tool(local=True, name=tool_name.split('/')[1])
+        else:
+            tool, _ = cls.TOOL_MANAGER.load_tool(local=True, name=tool_name)
+        
+        #return tool instance, not class
+        return tool()
     
     @classmethod
     def from_batch_preload(cls, tool_names: list[str]):
@@ -54,6 +51,7 @@ class AutoTool:
         }
 
         for tool_name in tool_names:
+             print('tool name', tool_name)
              tool = AutoTool.from_preloaded(tool_name)
 
              response['tools'].append(tool.get_tool_call_format())
