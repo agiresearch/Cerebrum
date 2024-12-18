@@ -15,10 +15,10 @@ jobs:
     steps:
     # Clone AIOS
     - name: Git Clone AIOS
-      uses: actions/checkout@v4  # Use checkout instead of git-clone
+      uses: actions/checkout@v4
       with:
         repository: agiresearch/AIOS
-        path: .                  # Clone to the root directory
+        path: aios_root
         ref: main
 
     - name: Set up Python 3.10
@@ -29,28 +29,30 @@ jobs:
     # Install AIOS dependencies
     - name: Install AIOS dependencies
       run: |
+        cd aios_root
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         python -m pip install -e .
+        cd ..
 
     # Clone Cerebrum into AIOS directory
     - name: Checkout Cerebrum
       uses: actions/checkout@v4
       with:
-        path: Cerebrum          # Clone to the Cerebrum subdirectory
-        ref: ${{ github.ref }}  # Use the branch that triggered the workflow
+        path: aios_root/Cerebrum
+        ref: ${{ github.ref }}
 
     # Install Cerebrum
     - name: Install Cerebrum
       run: |
-        python -m pip install -e Cerebrum/
+        python -m pip install -e aios_root/Cerebrum/
 
     # Run AIOS kernel
     - name: Run AIOS kernel in background
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: |
-        cd aios_main
+        cd aios_root
         bash runtime/launch_kernel.sh &>../kernel.log &
         KERNEL_PID=$!
         cd ..
