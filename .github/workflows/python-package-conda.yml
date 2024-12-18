@@ -13,15 +13,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    # First clone the AIOS repository
+    # Clone AIOS
     - name: Git Clone AIOS
-      uses: actions/checkout@v4
+      uses: actions/checkout@v4  # Use checkout instead of git-clone
       with:
         repository: agiresearch/AIOS
-        path: aios_main
+        path: .                  # Clone to the root directory
         ref: main
 
-    # Set up Python environment
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
@@ -30,26 +29,21 @@ jobs:
     # Install AIOS dependencies
     - name: Install AIOS dependencies
       run: |
-        cd aios_main
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         python -m pip install -e .
-        cd ..
 
-    # Clone the current Cerebrum repository to the AIOS directory
+    # Clone Cerebrum into AIOS directory
     - name: Checkout Cerebrum
       uses: actions/checkout@v4
       with:
-        path: aios_main/Cerebrum
-        ref: main
+        path: Cerebrum          # Clone to the Cerebrum subdirectory
+        ref: ${{ github.ref }}  # Use the branch that triggered the workflow
 
-    # Install Cerebrum dependencies
+    # Install Cerebrum
     - name: Install Cerebrum
       run: |
-        cd aios_main/Cerebrum
-        python -m pip install -r requirements.txt
-        python -m pip install -e .
-        cd ../..
+        python -m pip install -e Cerebrum/
 
     # Run AIOS kernel
     - name: Run AIOS kernel in background
