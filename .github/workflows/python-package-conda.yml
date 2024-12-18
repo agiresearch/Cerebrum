@@ -21,6 +21,14 @@ jobs:
         path: aios_root
         ref: main
 
+    # 添加验证步骤
+    - name: Verify AIOS clone
+      run: |
+        echo "=== AIOS root directory contents ==="
+        ls -la aios_root/
+        echo "=== Looking for setup files ==="
+        find aios_root/ -name "setup.py" -o -name "pyproject.toml"
+
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
@@ -28,12 +36,10 @@ jobs:
 
     # Install AIOS dependencies
     - name: Install AIOS dependencies
+      working-directory: aios_root
       run: |
-        cd aios_root
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        python -m pip install -e .
-        cd ..
 
     # Clone Cerebrum into AIOS directory
     - name: Checkout Cerebrum
