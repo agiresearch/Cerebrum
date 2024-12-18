@@ -1,4 +1,4 @@
-name: Cerebrum Application
+name: Cerebrum-AIOS Integration Test
 
 on:
   push:
@@ -13,64 +13,92 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    # First clone the AIOS repository
+    - name: Git Clone AIOS
+      uses: actions/checkout@v4
       with:
-        ref: main  # Specify main branch
+        repository: agiresearch/AIOS
+        path: aios_main
+        ref: main
 
+    # Set up Python environment
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
         python-version: "3.10"
 
-    - name: Install Cerebrum dependencies
+    # Install AIOS dependencies
+    - name: Install AIOS dependencies
       run: |
+        cd aios_main
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         python -m pip install -e .
-
-    - name: Git Clone AIOS
-      uses: sudosubin/git-clone-action@v1.0.1
-      with:
-        repository: agiresearch/AIOS
-        path: AIOS
-
-    - name: Install AIOS dependencies
-      run: |
-        cd AIOS
-        python -m pip install -r requirements.txt
-        python -m pip install -e .
         cd ..
 
+    # Clone the current Cerebrum repository to the AIOS directory
+    - name: Checkout Cerebrum
+      uses: actions/checkout@v4
+      with:
+        path: aios_main/Cerebrum
+        ref: main
+
+    # Install Cerebrum dependencies
+    - name: Install Cerebrum
+      run: |
+        cd aios_main/Cerebrum
+        python -m pip install -r requirements.txt
+        python -m pip install -e .
+        cd ../..
+
+    # Run AIOS kernel
     - name: Run AIOS kernel in background
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: |
-        # Set environment variable when starting kernel
-        export GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-        cd AIOS  # Change to AIOS directory
-        bash runtime/launch_kernel.sh &>../logs &
-        cd ..  # Return to root directory
-        sleep 10  # Wait for kernel to start
+        cd aios_main
+        bash runtime/launch_kernel.sh &>../kernel.log &
+        KERNEL_PID=$!
+        cd ..
         
-        # Check if kernel is running
-        if curl -s http://localhost:8000/health > /dev/null; then
-          echo "Kernel started successfully"
-        else
-          echo "Error: Kernel failed to start"
+        # Wait and check if the process is running
+        sleep 5
+        if ! ps -p $KERNEL_PID > /dev/null; then
+          echo "Kernel process has terminated. Check the log:"
+          cat kernel.log
+          exit 1
+        fi
+        
+        # Wait for the port to be available
+        for i in {1..12}; do
+          if nc -z localhost 8000; then
+            echo "Port 8000 is available - kernel is running"
+            break
+          fi
+          echo "Waiting for kernel to start... Attempt $i"
+          sleep 5
+        done
+        
+        # Final connection test
+        if ! curl -s http://localhost:8000/health; then
+          echo "Unable to connect to the kernel. Log:"
+          cat kernel.log
           exit 1
         fi
 
-    - name: Run the run-agent code
+    # Run integration test
+    - name: Run integration test
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: |
-        # Verify if API key is set
-        if [ -z "$GEMINI_API_KEY" ]; then
-          echo "Error: GEMINI_API_KEY is not set in GitHub Secrets"
-          exit 1
-        fi
+        # Debug information
+        echo "Checking kernel status..."
+        curl -v http://localhost:8000/health || true
         
-        # Since run-agent is installed in the Python environment, we can run it from anywhere
+        echo "Network status:"
+        netstat -tlpn | grep 8000 || true
+        
+        # Run the test
         run-agent \
           --llm_name gemini-1.5-flash \
           --llm_backend google \
@@ -79,21 +107,25 @@ jobs:
           --aios_kernel_url http://localhost:8000 \
           2>&1 | tee agent.log
 
-    - name: Upload a Build Artifact
-      if: always()  # Upload logs even if job fails
+    # Upload logs
+    - name: Upload logs
+      if: always()
       uses: actions/upload-artifact@v4.4.3
       with:
-        name: logs
+        name: test-logs
         path: |
-          logs
+          kernel.log
           agent.log
 
-    - name: Collect debug information
+    # Debug information
+    - name: Debug information
       if: failure()
       run: |
-        echo "=== Kernel Logs ==="
-        cat logs
-        echo "=== Environment Variables ==="
+        echo "=== Kernel log ==="
+        cat kernel.log
+        echo "=== Environment variables ==="
         env | grep -i api_key || true
-        echo "=== Process Status ==="
+        echo "=== Process status ==="
         ps aux | grep kernel
+        echo "=== Directory structure ==="
+        tree aios_main || true
