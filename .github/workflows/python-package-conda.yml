@@ -21,14 +21,13 @@ jobs:
         path: aios_root
         ref: main
 
-    # 添加验证步骤
+    # Verify AIOS clone
     - name: Verify AIOS clone
       run: |
         echo "=== AIOS root directory contents ==="
         ls -la aios_root/
         echo "=== Looking for setup files ==="
         find aios_root/ -name "setup.py" -o -name "pyproject.toml"
-
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
@@ -40,7 +39,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
     # Clone Cerebrum into AIOS directory
     - name: Checkout Cerebrum
       uses: actions/checkout@v4
@@ -52,7 +50,6 @@ jobs:
     - name: Install Cerebrum
       run: |
         python -m pip install -e aios_root/Cerebrum/
-
     # Run AIOS kernel
     - name: Run AIOS kernel in background
       env:
@@ -63,31 +60,36 @@ jobs:
         KERNEL_PID=$!
         cd ..
         
-        # Wait and check if the process is running
-        sleep 5
-        if ! ps -p $KERNEL_PID > /dev/null; then
-          echo "Kernel process has terminated. Check the log:"
-          cat kernel.log
-          exit 1
-        fi
+        # Set maximum wait time (10 seconds)
+        max_wait=10
+        start_time=$SECONDS
         
-        # Wait for the port to be available
-        for i in {1..12}; do
-          if nc -z localhost 8000; then
-            echo "Port 8000 is available - kernel is running"
-            break
+        # Dynamically check if the process is running until it succeeds or times out
+        while true; do
+          if ! ps -p $KERNEL_PID > /dev/null; then
+            echo "Kernel process died. Checking logs:"
+            cat kernel.log
+            exit 1
           fi
-          echo "Waiting for kernel to start... Attempt $i"
-          sleep 5
+          
+          if nc -z localhost 8000; then
+            if curl -s http://localhost:8000/health; then
+              echo "Kernel successfully started and healthy"
+              break
+            fi
+          fi
+          
+          # Check if timed out
+          elapsed=$((SECONDS - start_time))
+          if [ $elapsed -ge $max_wait ]; then
+            echo "Timeout after ${max_wait} seconds. Kernel failed to start properly."
+            cat kernel.log
+            exit 1
+          fi
+          
+          echo "Waiting for kernel to start... (${elapsed}s elapsed)"
+          sleep 1
         done
-        
-        # Final connection test
-        if ! curl -s http://localhost:8000/health; then
-          echo "Unable to connect to the kernel. Log:"
-          cat kernel.log
-          exit 1
-        fi
-
     # Run integration test
     - name: Run integration test
       env:
@@ -108,7 +110,6 @@ jobs:
           --task "Tell me what is core idea of AIOS" \
           --aios_kernel_url http://localhost:8000 \
           2>&1 | tee agent.log
-
     # Upload logs
     - name: Upload logs
       if: always()
@@ -118,7 +119,6 @@ jobs:
         path: |
           kernel.log
           agent.log
-
     # Debug information
     - name: Debug information
       if: failure()
