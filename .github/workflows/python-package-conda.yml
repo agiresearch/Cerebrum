@@ -78,7 +78,7 @@ jobs:
           fi
           
           if nc -z localhost 8000; then
-            if curl -s http://localhost:8000/health > /dev/null; then
+            if curl -s http://localhost:8000/health; then
               echo "Kernel successfully started and healthy"
               break
             fi
@@ -108,6 +108,30 @@ jobs:
         # Debug information
         echo "Checking kernel status..."
         curl -v http://localhost:8000/health || true
+        
+        echo "Network status:"
+        netstat -tlpn | grep 8000 || true
+        
+        # Run the test
+        run-agent \
+          --llm_name gemini-1.5-flash \
+          --llm_backend google \
+          --agent_name_or_path demo_author/demo_agent \
+          --task "Tell me what is core idea of AIOS" \
+          --aios_kernel_url http://localhost:8000 \
+          2>&1 | tee agent.log
+        
+        # Check for error patterns
+        if grep -q "Failed to initialize client: 500 Server Error" agent.log; then
+          echo "Error: LLM initialization failed. Please check your API key configuration."
+          exit 1
+        fi
+        
+        # Check if completed successfully
+        if ! grep -q "Final Result:" agent.log; then
+          echo "Error: Agent did not complete successfully"
+          exit 1
+        fi
     # Upload logs
     - name: Upload logs
       if: always()
