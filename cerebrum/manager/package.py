@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import zipfile
 import os
+from typing import Dict
 
 class AgentPackage:
     def __init__(self, path: Path):
@@ -32,9 +33,33 @@ class AgentPackage:
     def get_module_name(self):
         return self.metadata.get('module', 'Agent')
     
-    def get_config(self):
-        return self.metadata
-    
+    def get_config(self) -> Dict:
+        if "config.json" not in self.files:
+            raise FileNotFoundError("Config file not found in package")
+        
+        config_content = self.files["config.json"]
+        config = json.loads(config_content.decode('utf-8'))
+        
+        # Maintain the integrity of the original configuration
+        result = config.copy()
+        
+        # Extract required fields from meta and build, but do not override original fields
+        meta_info = config.get("meta", {})
+        build_info = config.get("build", {})
+        
+        # Only add top-level fields, do not override existing fields
+        if "author" not in result:
+            result["author"] = meta_info.get("author")
+        if "version" not in result:
+            result["version"] = meta_info.get("version")
+        if "license" not in result:
+            result["license"] = meta_info.get("license")
+        if "entry" not in result:
+            result["entry"] = build_info.get("entry")
+        if "module" not in result:
+            result["module"] = build_info.get("module")
+            
+        return result
 
 class ToolPackage:
     def __init__(self, path: Path):

@@ -8,9 +8,19 @@ from cerebrum.interface import AutoLLM, AutoTool
 class BaseAgent:
     def __init__(self, agent_name, task_input, config_):
         self.agent_name = agent_name
-        # self.config = self._load_config(dir)
+        self.task_input = task_input
         self.config = config_
+        
+        print("Debug - BaseAgent init:")
+        print(f"config_: {config_}")
+        print(f"self.config: {self.config}")
+        
 
+        if not isinstance(self.config, dict):
+            raise ValueError(f"Config must be a dict, got {type(self.config)}")
+        if "tools" not in self.config:
+            raise ValueError(f"Config must contain 'tools' key. Current config: {self.config}")
+        
         config.global_client = Cerebrum()
         # self.send_request = AutoLLM.from_dynamic().process
         self.send_request = None

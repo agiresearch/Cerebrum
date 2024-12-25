@@ -10,9 +10,14 @@ from pathlib import Path
 import platformdirs
 import importlib.util
 import uuid
+import traceback
+import logging
+import re
 
 from cerebrum.manager.package import AgentPackage
 from cerebrum.utils.manager import get_newest_version
+
+logger = logging.getLogger(__name__)
 
 class AgentManager:
     def __init__(self, base_url: str):
@@ -29,18 +34,63 @@ class AgentManager:
         return path_version.replace('-', '.')
 
     def package_agent(self, folder_path: str) -> Dict:
-        agent_files = self._get_agent_files(folder_path)
-        metadata = self._get_agent_metadata(folder_path)
-
-        return {
-            "author": metadata.get("meta", {}).get('author'),
-            "name": metadata.get('name'),
-            "version": metadata.get("meta", {}).get('version'),
-            "license": metadata.get("license", "Unknown"),
-            "files": agent_files,
-            "entry": metadata.get("build", {}).get("entry", "agent.py"),
-            "module": metadata.get("build", {}).get("module", "Agent")
-        }
+        try:
+            logger.debug(f"\n{'='*50}")
+            logger.debug(f"Packaging agent from folder: {folder_path}")
+            logger.debug(f"Folder exists: {os.path.exists(folder_path)}")
+            logger.debug(f"Folder contents: {os.listdir(folder_path)}")
+            
+            agent_files = self._get_agent_files(folder_path)
+            logger.debug(f"\nCollected agent files: {list(agent_files.keys())}")
+            
+            config_path = os.path.join(folder_path, "config.json")
+            logger.debug(f"\nLooking for config at: {config_path}")
+            logger.debug(f"Config exists: {os.path.exists(config_path)}")
+            
+            if os.path.exists(config_path):
+                with open(config_path, 'r') as f:
+                    metadata = json.load(f)
+            else:
+                logger.error(f"Config file not found at {config_path}")
+                raise FileNotFoundError(f"Config file not found at {config_path}")
+            
+            logger.debug(f"\nMetadata loaded: {json.dumps(metadata, indent=2)}")
+            
+            # Modify here: Extract only the required fields from meta and build, instead of overwriting the entire configuration
+            meta_info = metadata.get("meta", {})
+            build_info = metadata.get("build", {})
+            result = metadata.copy()  # Keep the complete configuration, including the tools field
+            
+            # Only update specific fields at the top level
+            top_level_updates = {
+                "author": meta_info.get('author'),
+                "name": metadata.get("name"),
+                "version": meta_info.get('version'),
+                "license": meta_info.get('license'),
+                "entry": build_info.get('entry'),
+                "module": build_info.get('module')
+            }
+            result.update(top_level_updates)
+            
+            # Add file content
+            files_list = []
+            for name, content in agent_files.items():
+                files_list.append({
+                    "path": name,
+                    "content": base64.b64encode(content).decode('utf-8')
+                })
+            result["files"] = files_list
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"\n{'='*50}")
+            logger.error(f"Failed to package agent")
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"Error message: {str(e)}")
+            logger.error(f"Stack trace:\n{traceback.format_exc()}")
+            logger.error(f"{'='*50}\n")
+            raise
 
     def upload_agent(self, payload: Dict):
         response = requests.post(f"{self.base_url}/cerebrum/upload", json=payload)
@@ -136,26 +186,46 @@ class AgentManager:
 
         print(f"Saved agent to cache: {cache_path}")
 
-    def _get_agent_files(self, folder_path: str) -> List[Dict[str, str]]:
-        files = []
-        for root, _, filenames in os.walk(folder_path):
-            for filename in filenames:
-                file_path = os.path.join(root, filename)
-                relative_path = os.path.relpath(file_path, folder_path)
-                with open(file_path, "rb") as f:
-                    content = base64.b64encode(f.read()).decode('utf-8')
-                files.append({
-                    "path": relative_path,
-                    "content": content
-                })
-        return files
+    def _get_agent_files(self, folder_path: str) -> Dict[str, bytes]:
+        try:
+            logger.debug(f"\nCollecting files from {folder_path}")
+            files = {}
+            for root, _, filenames in os.walk(folder_path):
+                for filename in filenames:
+                    if filename.endswith(('.py', '.txt', '.json')):
+                        file_path = os.path.join(root, filename)
+                        relative_path = os.path.relpath(file_path, folder_path)
+                        logger.debug(f"Processing file: {relative_path}")
+                        
+                        with open(file_path, 'rb') as f:
+                            content = f.read()
+                            files[relative_path] = content
+                            logger.debug(f"Added file: {relative_path} ({len(content)} bytes)")
+            
+            logger.debug(f"Collected {len(files)} files: {list(files.keys())}")
+            return files
+        except Exception as e:
+            logger.error(f"Error collecting files from {folder_path}: {str(e)}")
+            raise
 
-    def _get_agent_metadata(self, folder_path: str) -> Dict[str, str]:
-        config_path = os.path.join(folder_path, "config.json")
-        if os.path.exists(config_path):
-            with open(config_path, "r") as f:
-                return json.load(f)
-        return {}
+    def _get_agent_metadata(self, folder_path: str) -> Dict:
+        try:
+            config_path = os.path.join(folder_path, "config.json")
+            logger.debug(f"\nReading metadata from {config_path}")
+            
+            if not os.path.exists(config_path):
+                logger.error(f"Config file not found: {config_path}")
+                raise FileNotFoundError(f"Config file not found: {config_path}")
+            
+            with open(config_path, 'r') as f:
+                content = f.read()
+                logger.debug(f"Config content:\n{content}")
+                metadata = json.loads(content)
+                logger.debug(f"Parsed metadata: {json.dumps(metadata, indent=2)}")
+                return metadata
+        except Exception as e:
+            logger.error(f"Error reading metadata from {config_path}: {str(e)}")
+            raise
 
     def list_available_agents(self) -> List[Dict[str, str]]:
         response = requests.get(f"{self.base_url}/cerebrum/get_all_agents")
@@ -231,66 +301,156 @@ class AgentManager:
 
         temp_reqs_path.unlink()  # Remove temporary requirements file
 
-    def load_agent(self, 
-                   author: str = '', 
-                   name: str = '', 
-                   version: str | None = None,
-                   local: bool = False, 
-                   path: str | None = None):
-        
-        if not local:
-            if version is None:
-                cached_versions = self._get_cached_versions(author, name)
-                version = get_newest_version(cached_versions)
-
-            agent_path = self._get_cache_path(author, name, version)
+    def load_agent(self, author: str = '', name: str = '', version: str | None = None,
+                   local: bool = False, path: str | None = None):
+        try:
+            logger.debug(f"\n{'='*50}")
+            logger.debug("Starting agent loading process")
+            logger.debug(f"Parameters: author={author}, name={name}, version={version}")
+            logger.debug(f"local={local}, path={path}")
             
-            if not agent_path.exists():
-                print(f"Agent {author}/{name} (v{version}) not found in cache. Downloading...")
-                self.download_agent(author, name, version)
-        else:
-            local_agent_data = self.package_agent(path)
-            random_path = self._get_random_cache_path()
-            self._save_agent_to_cache(local_agent_data, random_path)
-            agent_path = f"{random_path}"
+            if local:
+                # Handle relative paths
+                if not os.path.isabs(path):
+                    # Try multiple possible base paths
+                    possible_paths = [
+                        path,  # Original path
+                        os.path.join(os.getcwd(), path),  # Relative to the current working directory
+                        os.path.join(os.path.dirname(self.base_path), path),  # Relative to base_path
+                        os.path.join(os.path.dirname(self.base_path), "cerebrum", path),  # Relative to the cerebrum directory
+                    ]
+                    
+                    logger.debug("Trying possible paths:")
+                    for try_path in possible_paths:
+                        logger.debug(f"Checking path: {try_path}")
+                        logger.debug(f"Path exists: {os.path.exists(try_path)}")
+                        if os.path.exists(try_path):
+                            path = try_path
+                            logger.debug(f"Found valid path: {path}")
+                            break
+                    else:
+                        logger.error("No valid path found. Tried:")
+                        for try_path in possible_paths:
+                            logger.error(f"  - {try_path}")
+                        raise FileNotFoundError(f"Could not find agent at any of the attempted paths")
+                
+                logger.debug(f"Final resolved path: {path}")
+                # ... The rest of the code remains unchanged ...
 
+            if not local:
+                if version is None:
+                    cached_versions = self._get_cached_versions(author, name)
+                    version = get_newest_version(cached_versions)
 
-        agent_package = AgentPackage(agent_path)
-        agent_package.load()
+                agent_path = self._get_cache_path(author, name, version)
+                
+                if not agent_path.exists():
+                    print(f"Agent {author}/{name} (v{version}) not found in cache. Downloading...")
+                    self.download_agent(author, name, version)
+            else:
+                logger.debug("\nPackaging local agent")
+                logger.debug(f"Agent path: {path}")
+                logger.debug(f"Path exists: {os.path.exists(path)}")
+                logger.debug(f"Path contents: {os.listdir(path) if os.path.exists(path) else 'PATH NOT FOUND'}")
+                
+                local_agent_data = self.package_agent(path)
+                logger.debug(f"Local agent data: {json.dumps(local_agent_data, indent=2)}")
+                
+                random_path = self._get_random_cache_path()
+                logger.debug(f"Generated cache path: {random_path}")
+                
+                self._save_agent_to_cache(local_agent_data, random_path)
+                agent_path = f"{random_path}"
+                logger.debug(f"Saved agent to cache: {agent_path}")
 
-        entry_point = agent_package.get_entry_point()
-        module_name = agent_package.get_module_name()
+            logger.debug(f"\nLoading agent package from: {agent_path}")
+            agent_package = AgentPackage(agent_path)
+            agent_package.load()
 
-        # Create a temporary directory to extract the agent files
-        temp_dir = self.cache_dir / "temp" / f"{author}_{name}_{version}"
-        temp_dir.mkdir(parents=True, exist_ok=True)
+            entry_point = agent_package.get_entry_point()
+            module_name = agent_package.get_module_name()
+            logger.debug(f"Entry point: {entry_point}")
+            logger.debug(f"Module name: {module_name}")
+            logger.debug(f"Package files: {list(agent_package.files.keys())}")
 
+            temp_dir = self.cache_dir / "temp" / f"{author}_{name}_{version}"
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            logger.debug(f"\nCreated temp directory: {temp_dir}")
+            logger.debug(f"Temp dir exists: {temp_dir.exists()}")
 
-        # Extract agent files to the temporary directory
-        for filename, content in agent_package.files.items():
-            file_path = temp_dir / filename
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            file_path.write_bytes(content)
+            # Extract files and print content
+            for filename, content in agent_package.files.items():
+                file_path = temp_dir / filename
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                file_path.write_bytes(content)
+                if filename.endswith('.py'):
+                    logger.debug(f"\nFile content for {filename}:")
+                    try:
+                        logger.debug(f"{file_path.read_text()}")
+                    except Exception as e:
+                        logger.error(f"Error reading {filename}: {e}")
 
-        # Add the temporary directory to sys.path
-        sys.path.insert(0, str(temp_dir))
+            if str(temp_dir) not in sys.path:
+                sys.path.insert(0, str(temp_dir))
+            logger.debug(f"\nPython path: {sys.path}")
 
-        # Load the module
-        spec = importlib.util.spec_from_file_location(module_name, str(temp_dir / entry_point))
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+            module_path = temp_dir / entry_point
+            logger.debug(f"\nLoading module from: {module_path}")
+            logger.debug(f"Module path exists: {module_path.exists()}")
+            
+            spec = importlib.util.spec_from_file_location(module_name, str(module_path))
+            if spec is None:
+                raise ImportError(f"Failed to create module spec for {module_name}")
+                
+            module = importlib.util.module_from_spec(spec)
+            logger.debug(f"Created module object: {module}")
+            logger.debug(f"Module dict before exec: {dir(module)}")
+            
+            if spec.loader is None:
+                raise ImportError(f"Module spec has no loader for {module_name}")
+                
+            spec.loader.exec_module(module)
+            logger.debug(f"Module dict after exec: {dir(module)}")
+            logger.debug(f"Available module attributes: {[attr for attr in dir(module) if not attr.startswith('__')]}")
 
-        with open(temp_dir / 'config.json', "r") as f:
-            config_ = json.load(f)
+            try:
+                logger.debug(f"\nAttempting to get class from module {module.__name__}")
+                # Prefer to use the build.class configuration
+                class_name = agent_package.get_config().get("build", {}).get("class")
+                if not class_name:  # If no class is specified, use the module name
+                    class_name = module_name
+                
+                logger.debug(f"Looking for class: {class_name}")
+                agent_class = getattr(module, class_name)
+                logger.debug(f"Successfully got agent class: {agent_class}")
+                logger.debug(f"Agent class type: {type(agent_class)}")
+            except AttributeError as e:
+                logger.error(f"\nFailed to get {class_name} from module {module.__name__}")
+                logger.error(f"Module contents: {dir(module)}")
+                logger.error(f"Module file path: {module.__file__}")
+                if hasattr(module, '__all__'):
+                    logger.error(f"Module __all__: {module.__all__}")
+                raise AttributeError(
+                    f"Module '{module.__name__}' has no attribute '{class_name}'. "
+                    f"Available attributes: {[attr for attr in dir(module) if not attr.startswith('__')]}"
+                ) from e
 
-        # Remove the temporary directory from sys.path
-        sys.path.pop(0)
-
-        # Get the agent class
-        agent_class = getattr(module, module_name)
- 
-        # return agent_class, agent_package.get_config()
-        return agent_class, config_
+            config = agent_package.get_config()
+            logger.debug(f"\nAgent config: {json.dumps(config, indent=2)}")
+            logger.debug(f"{'='*50}\n")
+            
+            return agent_class, config
+            
+        except Exception as e:
+            logger.error(f"\n{'='*50}")
+            logger.error("Failed to load agent")
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"Error message: {str(e)}")
+            logger.error(f"Stack trace:\n{traceback.format_exc()}")
+            logger.error(f"Current working directory: {os.getcwd()}")
+            logger.error(f"Python path: {sys.path}")
+            logger.error(f"{'='*50}\n")
+            raise
 
 
 if __name__ == '__main__':
