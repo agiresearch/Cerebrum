@@ -1,0 +1,22 @@
+# Default configuration for Cerebrum
+
+# AIOS Kernel connection settings
+kernel:
+  base_url: "http://localhost:8000"
+  timeout: 30
+
+# Client settings
+client:
+  memory_limit: 524288000  # 500MB in bytes
+  max_workers: 32
+  root_dir: "root"
+
+# Manager settings
+manager:
+  agent_hub_url: "https://app.aios.foundation"
+  tool_hub_url: "https://app.aios.foundation"
+
+# Tool settings
+tool:
+  max_retries: 3
+  timeout: 60 
