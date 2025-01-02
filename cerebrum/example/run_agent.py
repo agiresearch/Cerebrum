@@ -54,30 +54,15 @@ def run_agent(
     agent_name_or_path: str,
     task: str,
     timeout: int = 300,
-    local_agent: bool = False,
-) -> Optional[str]:
-    """
-    Run an agent with the given configuration.
-    
-    Args:
-        client: The AIOS client instance
-        agent_name_or_path: Name or path of the agent
-        task: Task for the agent to complete
-        timeout: Maximum time to wait for completion
-        local_agent: Whether to use a local agent
-    """
+    local_agent: bool = False
+) -> Optional[Dict[str, Any]]:
+    """Run an agent with the specified task and wait for results."""
     try:
-        print("\n🚀 Starting agent execution...")
-        
-        # Connect to the client
         client.connect()
+        print(f"🚀 Executing agent: {os.path.basename(agent_name_or_path)}")
+        print(f"📋 Task: {task}")
         
-        # Modify the execution part to handle local agent path
-        execution_params = {
-            "task": task,
-            "local_agent": local_agent
-        }
-        
+        # Handle local agent path
         if local_agent:
             abs_agent_path = os.path.abspath(agent_name_or_path)
             if not os.path.exists(abs_agent_path):
@@ -85,30 +70,27 @@ def run_agent(
             print(f"Using local agent from: {abs_agent_path}")
             result = client.execute(
                 abs_agent_path,
-                execution_params
+                {"task": task, "local_agent": True}
             )
         else:
             result = client.execute(
                 agent_name_or_path,
-                execution_params
+                {"task": task}
             )
         
-        # Get the execution result
-        final_result = client.poll_agent(
-            result["execution_id"],
-            timeout=timeout
-        )
-        
-        print("📋 Task result:", final_result)
-        print("✅ Task completed")
-        
-        return final_result
-
-    except TimeoutError:
-        print("❌ Task timed out")
-        return None
+        try:
+            final_result = client.poll_agent(
+                result["execution_id"],
+                timeout=timeout
+            )
+            print("✅ Agent execution completed")
+            return final_result
+        except TimeoutError:
+            print("⚠️ Agent execution timed out")
+            return None
+            
     except Exception as e:
-        print(f"❌ Failed to execute task: {str(e)}")
+        print(f"❌ Error during agent execution: {str(e)}")
         return None
     finally:
         client.cleanup()
