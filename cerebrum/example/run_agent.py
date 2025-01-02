@@ -11,6 +11,7 @@ import os
 import sys
 from typing import Optional, Dict, Any
 import json
+from cerebrum.config.config_manager import config
 
 
 def setup_client(
@@ -167,14 +168,14 @@ def main():
     parser.add_argument(
         "--memory_limit",
         type=int,
-        default=500*1024*1024,
+        default=config.get('client', 'memory_limit'),
         help="Memory limit in bytes"
     )
     
     parser.add_argument(
         "--max_workers",
         type=int,
-        default=32,
+        default=config.get('client', 'max_workers'),
         help="Maximum number of workers"
     )
     
