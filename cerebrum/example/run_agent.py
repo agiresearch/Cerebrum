@@ -16,19 +16,13 @@ import json
 def setup_client(
     llm_name: str,
     llm_backend: str,
-    root_dir: str = None,
-    memory_limit: int = None,
-    max_workers: int = None,
-    aios_kernel_url: str = None
+    root_dir: str = "root",
+    memory_limit: int = 500*1024*1024,
+    max_workers: int = 32,
+    aios_kernel_url: str = "localhost:8000"
 ) -> Cerebrum:
     """Initialize and configure the Cerebrum client with specified parameters."""
-    # Use config values or override with provided parameters
-    base_url = aios_kernel_url or config.get('kernel', 'base_url')
-    root_dir = root_dir or config.get('client', 'root_dir')
-    memory_limit = memory_limit or config.get('client', 'memory_limit')
-    max_workers = max_workers or config.get('client', 'max_workers')
-    
-    client = Cerebrum(base_url=base_url)
+    client = Cerebrum(base_url=aios_kernel_url)
     config.global_client = client
 
     try:
