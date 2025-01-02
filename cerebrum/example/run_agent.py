@@ -5,12 +5,10 @@ from cerebrum.memory.layer import MemoryLayer
 from cerebrum.overrides.layer import OverridesLayer
 from cerebrum.storage.layer import StorageLayer
 from cerebrum.tool.layer import ToolLayer
-from cerebrum.manager.tool import ToolManager
 import argparse
 import os
 import sys
 from typing import Optional, Dict, Any
-import json
 
 
 def setup_client(
@@ -49,65 +47,32 @@ def setup_client(
 
 
 def run_agent(
-    client,
+    client: Cerebrum,
     agent_name_or_path: str,
     task: str,
-    timeout: int = 300,
-    local_agent: bool = False,
-) -> Optional[str]:
-    """
-    Run an agent with the given configuration.
-    
-    Args:
-        client: The AIOS client instance
-        agent_name_or_path: Name or path of the agent
-        task: Task for the agent to complete
-        timeout: Maximum time to wait for completion
-        local_agent: Whether to use a local agent
-    """
+    timeout: int = 300
+) -> Optional[Dict[str, Any]]:
+    """Run an agent with the specified task and wait for results."""
     try:
-        print("\n🚀 Starting agent execution...")
-        
-        # Connect to the client
         client.connect()
+        print(f"🚀 Executing agent: {os.path.basename(agent_name_or_path)}")
+        print(f"📋 Task: {task}")
         
-        # Modify the execution part to handle local agent path
-        execution_params = {
-            "task": task,
-            "local_agent": local_agent
-        }
+        result = client.execute(agent_name_or_path, {"task": task})
         
-        if local_agent:
-            abs_agent_path = os.path.abspath(agent_name_or_path)
-            if not os.path.exists(abs_agent_path):
-                raise ValueError(f"Local agent path not found: {abs_agent_path}")
-            print(f"Using local agent from: {abs_agent_path}")
-            result = client.execute(
-                abs_agent_path,
-                execution_params
+        try:
+            final_result = client.poll_agent(
+                result["execution_id"],
+                timeout=timeout
             )
-        else:
-            result = client.execute(
-                agent_name_or_path,
-                execution_params
-            )
-        
-        # Get the execution result
-        final_result = client.poll_agent(
-            result["execution_id"],
-            timeout=timeout
-        )
-        
-        print("📋 Task result:", final_result)
-        print("✅ Task completed")
-        
-        return final_result
-
-    except TimeoutError:
-        print("❌ Task timed out")
-        return None
+            print("✅ Agent execution completed")
+            return final_result
+        except TimeoutError:
+            print("⚠️ Agent execution timed out")
+            return None
+            
     except Exception as e:
-        print(f"❌ Failed to execute task: {str(e)}")
+        print(f"❌ Error during agent execution: {str(e)}")
         return None
     finally:
         client.cleanup()
@@ -115,82 +80,58 @@ def run_agent(
 
 def main():
     """Main entry point for the demo script."""
-    parser = argparse.ArgumentParser(description="Run an AIOS agent")
-    
-    # Original parameters
+    parser = argparse.ArgumentParser(description="AIOS Agent Demo")
     parser.add_argument(
-        "--llm_name",
-        type=str,
-        required=True,
-        help="Name of the LLM to use"
+        "--llm_name", 
+        help="LLM model to use",
+        required=True
     )
-    
     parser.add_argument(
         "--llm_backend",
-        type=str,
+        help="Backend service to use",
         required=True,
-        help="Backend service for the LLM"
+        choices=["openai", "google", "anthropic", "huggingface", "ollama", "vllm"]
     )
-    
     parser.add_argument(
-       "--agent_name_or_path",
-        type=str,
-        required=True,
-        help="Name or path of the agent to run"
-    )
-
-    # Add new parameters
-    parser.add_argument(
-        "--local_agent",
-        type=str,
-        choices=['yes', 'no', 'true', 'false'],
-        default='no',
-        help="Whether to use a local agent (yes/no or true/false)"
-    )
-
-    # Add aios_kernel_url parameter
-    parser.add_argument(
-        "--aios_kernel_url",
-        type=str,
-        default="http://localhost:8000",
-        help="URL of the AIOS kernel"
-    )
-    
-    # Add other necessary parameters
-    parser.add_argument(
-        "--root_dir",
-        type=str,
+        "--root-dir",
         default="root",
         help="Root directory for storage"
     )
-    
     parser.add_argument(
-        "--memory_limit",
+        "--memory-limit",
         type=int,
         default=500*1024*1024,
         help="Memory limit in bytes"
     )
-    
     parser.add_argument(
-        "--max_workers",
+        "--max-workers",
         type=int,
         default=32,
         help="Maximum number of workers"
     )
-    
     parser.add_argument(
         "--timeout",
         type=int,
         default=300,
         help="Timeout in seconds"
     )
-
-    # Add a task parameter
+    parser.add_argument(
+        "--agent_name_or_path",
+        # default="example/academic_agent",
+        required=True,
+        help="Path or name of the agent to execute"
+    )
     parser.add_argument(
         "--task",
-        type=str,
         required=True,
-        help="Task for the agent to complete"
+        # nargs="?",
+        # default="Help me search the AIOS paper and introduce its core idea. ",
+        help="Task for the agent to execute"
+    )
+    parser.add_argument(
+        "--aios_kernel_url",
+        default = "http://35.232.56.61:8000",
+        required=True
     )
 
     args = parser.parse_args()
@@ -215,15 +156,11 @@ def main():
             aios_kernel_url=args.aios_kernel_url
         )
 
-        # Convert local_agent string to boolean value
-        is_local_agent = args.local_agent.lower() in ['yes', 'true']
-
         result = run_agent(
             client=client,
             agent_name_or_path=args.agent_name_or_path,
             task=args.task,
-            timeout=args.timeout,
-            local_agent=is_local_agent
+            timeout=args.timeout
         )
 
         if result:
