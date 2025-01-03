@@ -105,6 +105,7 @@ def main():
         "--llm_backend",
         type=str,
         required=True,
+        choices=["openai", "google", "anthropic", "huggingface", "ollama", "vllm"],
         help="Backend service for the LLM"
     )
     
@@ -128,7 +129,8 @@ def main():
     parser.add_argument(
         "--aios_kernel_url",
         type=str,
-        default="http://localhost:8000",
+        default="http://35.232.56.61:8000",
+        required=True,
         help="URL of the AIOS kernel"
     )
     
