@@ -1,11 +1,21 @@
-from pydantic import BaseModel
-from typing import List, Dict, Any, Union
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any, Union, Optional
+
+class MemoryItem(BaseModel):
+    id: str
+    memory: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    created_at: str
+    updated_at: str
 
 class MemoryQuery(BaseModel):
-    # messages: List[Dict[str, Union[str, Any]]]  # List of message dictionaries, each containing role and content.
-    # message_return_type: str = Field(default="text")  # Type of the return message, default is "text".
     messages: List[Dict[str, Union[str, Any]]]
-    operation_type: str
+    operation_type: str  # One of: "add", "search", "delete"
+    text: Optional[str] = None  # For add operation
+    query: Optional[str] = None  # For search operation
+    memory_id: Optional[str] = None  # For delete operation
+    limit: Optional[int] = Field(default=5)  # For search operation
+    metadata: Optional[Dict[str, Any]] = None  # For add operation
 
     class Config:
-        arbitrary_types_allowed = True  # Allows the use of arbitrary types such as Any and Dict.
+        arbitrary_types_allowed = True
