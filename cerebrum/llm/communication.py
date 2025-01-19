@@ -31,13 +31,17 @@ class Response(BaseModel):
     Response class represents the output structure after performing actions.
     
     Attributes:
-        response_message (Optional[str]): The generated response message. Default is None.
-        tool_calls (Optional[List[Dict[str, Any]]]): An optional list of JSON-like objects (dictionaries) 
-            representing the tool calls made during processing. Default is None.
+        response_message (Optional[str]): The generated response message.
+        tool_calls (Optional[List[Dict[str, Any]]]): Tool calls made during processing.
+        finished (bool): Whether the processing is complete.
+        error (Optional[str]): Error message if any.
+        status_code (int): HTTP status code of the response.
     """
-    response_message: Optional[str] = None  # The generated response message, default is None.
-    tool_calls: Optional[List[Dict[str, Any]]] = None  # List of JSON-like objects representing tool calls, default is None.
-    finished: bool
+    response_message: Optional[str] = None
+    tool_calls: Optional[List[Dict[str, Any]]] = None
+    finished: bool = False
+    error: Optional[str] = None
+    status_code: int = 200
 
     class Config:
-        arbitrary_types_allowed = True  # Allows arbitrary types in validation.
+        arbitrary_types_allowed = True
