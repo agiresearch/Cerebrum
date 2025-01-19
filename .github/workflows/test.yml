@@ -1,3 +1,6 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
 name: Cerebrum-AIOS Integration Test
 
 on:
@@ -52,14 +55,7 @@ jobs:
         python -m pip install -e aios_root/Cerebrum/
     # Run AIOS kernel
     - name: Run AIOS kernel in background
-      env:
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || 'AIzaSyCx0VNhObFu0ta95xDfBx4IKJuyiPTXqbQ' }}
       run: |
-        # Check if using default test key
-        if [ "$GEMINI_API_KEY" = "AIzaSyCx0VNhObFu0ta95xDfBx4IKJuyiPTXqbQ" ]; then
-          echo "Notice: Using test API key - For testing purposes only"
-        fi
-        
         cd aios_root
         bash runtime/launch_kernel.sh &>../kernel.log &
         KERNEL_PID=$!
@@ -96,15 +92,20 @@ jobs:
           sleep 1
         done
     # Run integration test
-    - name: Run integration test
-      env:
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || 'AIzaSyCx0VNhObFu0ta95xDfBx4IKJuyiPTXqbQ' }}
+    - name: Download and install Ollama
       run: |
-        # Check if using default test key
-        if [ "$GEMINI_API_KEY" = "AIzaSyCx0VNhObFu0ta95xDfBx4IKJuyiPTXqbQ" ]; then
-          echo "Notice: Using test API key - For testing purposes only"
-        fi
-        
+        curl -fsSL https://ollama.com/install.sh | sh
+
+    - name: Pull Ollama models
+      run: |
+        ollama pull llama3:8b
+
+    - name: Run Ollama serve
+      run: |
+        ollama serve 2>&1 | tee ollama-llm.log
+
+    - name: Run integration test
+      run: |        
         # Debug information
         echo "Checking kernel status..."
         curl -v http://localhost:8000/health || true
@@ -114,8 +115,8 @@ jobs:
         
         # Run the test
         run-agent \
-          --llm_name gemini-1.5-flash \
-          --llm_backend google \
+          --llm_name llama3:8b \
+          --llm_backend ollama \
           --agent_name_or_path demo_author/demo_agent \
           --task "Tell me what is core idea of AIOS" \
           --aios_kernel_url http://localhost:8000 \
