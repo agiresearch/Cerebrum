@@ -301,6 +301,56 @@ class AgentManager:
 
         temp_reqs_path.unlink()  # Remove temporary requirements file
 
+    def _check_and_install_dependencies(self, agent_path: str) -> None:
+        """Check and install dependencies for agent"""
+        # First check meta_requirements.txt
+        req_file = os.path.join(agent_path, "meta_requirements.txt")
+        
+        if not os.path.exists(req_file):
+            # For built-in agents, also check requirements.txt
+            req_file = os.path.join(agent_path, "requirements.txt")
+        
+        if os.path.exists(req_file):
+            logger.info(f"Installing dependencies from {req_file}")
+            try:
+                subprocess.check_call([
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    "-r",
+                    req_file,
+                    "--quiet"
+                ])
+                logger.info("Dependencies installed successfully")
+            except Exception as e:
+                logger.error(f"Failed to install dependencies: {str(e)}")
+                raise
+        else:
+            logger.warning(f"No requirements file found at {req_file}")
+
+    def is_builtin_agent(self, name: str) -> bool:
+        """Check if an agent is a built-in example agent"""
+        builtin_paths = [
+            os.path.join(os.path.dirname(self.base_path), "cerebrum", "example", "agents", name),
+            os.path.join(os.path.dirname(self.base_path), "example", "agents", name),
+        ]
+        return any(os.path.exists(path) for path in builtin_paths)
+
+    def _get_builtin_agent_path(self, name: str) -> str:
+        """Get the path for a built-in agent"""
+        # Try both possible paths for built-in agents
+        possible_paths = [
+            os.path.join(os.path.dirname(self.base_path), "cerebrum", "example", "agents", name),
+            os.path.join(os.path.dirname(self.base_path), "example", "agents", name),
+        ]
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                return path
+            
+        raise FileNotFoundError(f"Built-in agent '{name}' not found in any of the expected paths: {possible_paths}")
+
     def load_agent(self, author: str = '', name: str = '', version: str | None = None,
                    local: bool = False, path: str | None = None):
         try:
@@ -310,14 +360,17 @@ class AgentManager:
             logger.debug(f"local={local}, path={path}")
             
             if local:
+                # For local agents, check and install dependencies first
+                self._check_and_install_dependencies(path)
+                
                 # Handle relative paths
                 if not os.path.isabs(path):
                     # Try multiple possible base paths
                     possible_paths = [
                         path,  # Original path
-                        os.path.join(os.getcwd(), path),  # Relative to the current working directory
+                        os.path.join(os.getcwd(), path),  # Relative to current working directory
                         os.path.join(os.path.dirname(self.base_path), path),  # Relative to base_path
-                        os.path.join(os.path.dirname(self.base_path), "cerebrum", path),  # Relative to the cerebrum directory
+                        os.path.join(os.path.dirname(self.base_path), "cerebrum", path),  # Relative to cerebrum directory
                     ]
                     
                     logger.debug("Trying possible paths:")
@@ -335,19 +388,8 @@ class AgentManager:
                         raise FileNotFoundError(f"Could not find agent at any of the attempted paths")
                 
                 logger.debug(f"Final resolved path: {path}")
-                # ... The rest of the code remains unchanged ...
-
-            if not local:
-                if version is None:
-                    cached_versions = self._get_cached_versions(author, name)
-                    version = get_newest_version(cached_versions)
-
-                agent_path = self._get_cache_path(author, name, version)
                 
-                if not agent_path.exists():
-                    print(f"Agent {author}/{name} (v{version}) not found in cache. Downloading...")
-                    self.download_agent(author, name, version)
-            else:
+                # Package and save local agent
                 logger.debug("\nPackaging local agent")
                 logger.debug(f"Agent path: {path}")
                 logger.debug(f"Path exists: {os.path.exists(path)}")
@@ -362,7 +404,33 @@ class AgentManager:
                 self._save_agent_to_cache(local_agent_data, random_path)
                 agent_path = f"{random_path}"
                 logger.debug(f"Saved agent to cache: {agent_path}")
+                
+            elif self.is_builtin_agent(name):
+                # Handle built-in agent
+                path = self._get_builtin_agent_path(name)
+                logger.info(f"Loading built-in agent from {path}")
+                self._check_and_install_dependencies(path)
+                
+                # Package and save built-in agent
+                logger.debug("\nPackaging built-in agent")
+                local_agent_data = self.package_agent(path)
+                random_path = self._get_random_cache_path()
+                self._save_agent_to_cache(local_agent_data, random_path)
+                agent_path = f"{random_path}"
+                
+            else:
+                # Handle remote agent
+                if version is None:
+                    cached_versions = self._get_cached_versions(author, name)
+                    version = get_newest_version(cached_versions)
 
+                agent_path = self._get_cache_path(author, name, version)
+                
+                if not agent_path.exists():
+                    print(f"Agent {author}/{name} (v{version}) not found in cache. Downloading...")
+                    self.download_agent(author, name, version)
+
+            # Common loading code for all agent types
             logger.debug(f"\nLoading agent package from: {agent_path}")
             agent_package = AgentPackage(agent_path)
             agent_package.load()
