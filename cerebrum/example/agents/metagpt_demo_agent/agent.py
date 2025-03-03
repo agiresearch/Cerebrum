@@ -1,5 +1,6 @@
 from cerebrum.agents.base import BaseAgent
 from cerebrum.community.adapter import prepare_framework, FrameworkType, set_request_func
+from cerebrum.utils.communication import send_request
 
 from metagpt.software_company import generate_repo, ProjectRepo
 
@@ -20,7 +21,7 @@ class MetaGPTAgent(BaseAgent):
 
     def run(self):
         # set aios request function
-        set_request_func(self.send_request, self.agent_name)
+        set_request_func(send_request, self.agent_name)
         repo: ProjectRepo = generate_repo(self.task_input)  # Example: Create a 2048 game
 
         final_result = str(repo)

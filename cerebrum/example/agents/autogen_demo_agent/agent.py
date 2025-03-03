@@ -2,6 +2,7 @@ from autogen import ConversableAgent
 
 from cerebrum.agents.base import BaseAgent
 from cerebrum.community.adapter import prepare_framework, FrameworkType, set_request_func
+from cerebrum.utils.communication import send_request
 
 
 class AutoGenAgent(BaseAgent):
@@ -17,7 +18,7 @@ class AutoGenAgent(BaseAgent):
 
     def run(self):
         # set aios request function
-        set_request_func(self.send_request, self.agent_name)
+        set_request_func(send_request, self.agent_name)
 
         cathy = ConversableAgent(
             "cathy",

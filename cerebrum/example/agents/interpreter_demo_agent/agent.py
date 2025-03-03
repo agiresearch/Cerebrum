@@ -1,5 +1,6 @@
 from interpreter import interpreter
 
+from cerebrum.utils.communication import send_request
 from cerebrum.agents.base import BaseAgent
 from cerebrum.community.adapter import prepare_framework, FrameworkType, set_request_func
 
@@ -16,7 +17,7 @@ class OpenInterpreterAgent(BaseAgent):
 
     def run(self):
         # set aios request function
-        set_request_func(self.send_request, self.agent_name)
+        set_request_func(send_request, self.agent_name)
         final_result = interpreter.chat(self.task_input)
         self.rounds += 1
         return {

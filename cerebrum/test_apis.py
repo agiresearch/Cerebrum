@@ -1,6 +1,6 @@
 from cerebrum.llm.apis import llm_chat, llm_call_tool, llm_operate_file
-from cerebrum.memory.apis import alloc_memory, read_memory, write_memory, clear_memory
-from cerebrum.storage.apis import mount, retrieve, create_file, create_dir, write_file, roll_back, share_file
+# from cerebrum.memory.apis import alloc_memory, read_memory, write_memory, clear_memory
+# from cerebrum.storage.apis import mount, retrieve, create_file, create_dir, write_file, roll_back, share_file
 from cerebrum.tool.apis import call_tool
 
 from cerebrum.interface import AutoTool
@@ -14,7 +14,7 @@ def test_single_llm_chat(messages):
         messages=messages, 
         base_url="http://localhost:8000", 
         llms=[
-            {"name": "gemini-1.5-flash","backend":"google"}
+            {"name": "gpt-4o-mini","backend":"openai"}
         ]
     )
     print(response)
@@ -26,8 +26,8 @@ def test_multi_llm_chat(messages):
         messages=messages, 
         base_url="http://localhost:8000", 
         llms=[
-            {"name": "gemini-1.5-flash","backend":"google"},
-            {"name": "qwen2.5-7b","backend":"ollama"}
+            {"name": "gpt-4o-mini","backend":"openai"},
+            # {"name": "qwen2.5-7b","backend":"ollama"}
         ]
     )
     print(response)
@@ -38,8 +38,8 @@ def test_multi_llm_chat(messages):
         messages=messages, 
         base_url="http://localhost:8000", 
         llms=[
-            {"name": "gemini-1.5-flash","backend":"google"},
-            {"name": "qwen2.5:7b","backend":"ollama"}
+            {"name": "gpt-4o-mini","backend":"openai"},
+            # {"name": "qwen2.5:7b","backend":"ollama"}
         ]
     )
     
@@ -93,8 +93,8 @@ def test_create_dir():
 if __name__ == "__main__":
     # agent = TestAgent("test_agent", "What is the capital of France?")
     # agent.run()
-    test_single_llm_chat()
-    test_multi_llm_chat()
+    test_single_llm_chat([{"role": "user", "content": "What is the capital of France?"}])
+    # test_multi_llm_chat()
     # test_call_tool()
     # test_operate_file()
     # test_mount()

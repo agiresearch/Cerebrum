@@ -3,6 +3,8 @@ import functools
 from enum import Enum
 from typing import Callable
 
+from cerebrum.llm.apis import llm_chat
+
 
 class FrameworkType(Enum):
     """
@@ -17,6 +19,7 @@ class FrameworkType(Enum):
 
 FRAMEWORK_ADAPTER = {}
 
+REQUEST_FUNC = None
 
 def add_framework_adapter(framework_type: str):
     """
@@ -61,22 +64,20 @@ def prepare_framework(framework_type: FrameworkType):
         adapter()
 
 
-REQUEST_FUNC = None
-
-
-def set_request_func(request_func: Callable, agent_name: str):
+def set_request_func(request_func: Callable, agent_name: str, base_url: str = "http://localhost:8000"):
     """
     Set the request function for the AIOS adapter.
 
     Args:
         request_func (Callable): The function to handle requests.
         agent_name (str): The name of the agent.
+        base_url (str): The base URL of the AIOS.
 
     Returns:
         None
     """
     def request_wrapper(query):
-        return request_func(agent_name=agent_name, query=query)
+        return request_func(agent_name=agent_name, query=query, base_url=base_url)
 
     global REQUEST_FUNC
     REQUEST_FUNC = request_wrapper
