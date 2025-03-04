@@ -3,7 +3,7 @@ from typing import Any
 
 from cerebrum.client import Cerebrum
 from cerebrum import config
-from cerebrum.interface import AutoLLM, AutoTool
+from cerebrum.interface import AutoTool
 
 class BaseAgent:
     def __init__(self, agent_name, task_input, config_):

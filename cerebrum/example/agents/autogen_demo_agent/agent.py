@@ -1,22 +1,18 @@
 from autogen import ConversableAgent
 
-from cerebrum.agents.base import BaseAgent
 from cerebrum.community.adapter import prepare_framework, FrameworkType, set_request_func
 from cerebrum.utils.communication import send_request
 
 
-class AutoGenAgent(BaseAgent):
+class AutoGenAgent:
 
-    def __init__(self, agent_name, task_input, config_):
-        super().__init__(agent_name, task_input, config_)
-
-        self.task_input = task_input
-        self.rounds = 0
+    def __init__(self, agent_name):
+        self.agent_name = agent_name
 
         # prepare autogen
         prepare_framework(FrameworkType.AutoGen)
 
-    def run(self):
+    def run(self, task):
         # set aios request function
         set_request_func(send_request, self.agent_name)
 
@@ -34,12 +30,7 @@ class AutoGenAgent(BaseAgent):
         )
 
         # Let the assistant start the conversation.  It will end when the user types exit.
-        final_result = joe.initiate_chat(cathy, message=self.task_input, max_turns=3)
-        chat_history = final_result.chat_history
+        final_result = joe.initiate_chat(cathy, message=task, max_turns=3)
+        # chat_history = final_result.chat_history
 
-        self.rounds += 1
-        return {
-            "agent_name": self.agent_name,
-            "result": chat_history,
-            "rounds": self.rounds,
-        }
+        return final_result

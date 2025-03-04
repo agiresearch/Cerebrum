@@ -5,8 +5,9 @@ import sys
 
 from cerebrum.community.adapter.adapter import FrameworkType
 from .adapter import add_framework_adapter, get_request_func
-from cerebrum.llm.communication import LLMQuery
 from dataclasses import dataclass
+
+from ...llm.apis import LLMQuery
 
 try:
     from interpreter import interpreter
@@ -78,9 +79,9 @@ def adapter_aios_completions(**params):
                     }
                 ]
             }
-            comletion["choices"][0]["delta"]["content"] = response.response_message
+            comletion["choices"][0]["delta"]["content"] = response["response_message"]
             if response.tool_calls is not None:
-                comletion["choices"][0]["delta"]["tool_calls"] = format_tool_calls_to_interpreter(response.tool_calls)
+                comletion["choices"][0]["delta"]["tool_calls"] = format_tool_calls_to_interpreter(response["tool_calls"])
 
             return [comletion]  # If the completion is successful, exit the function
         except KeyboardInterrupt:

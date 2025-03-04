@@ -11,7 +11,7 @@ from cerebrum.community.adapter.adapter import FrameworkType
 from cerebrum.community.adapter.adapter import add_framework_adapter, get_request_func
 from openai import APITimeoutError, APIError
 
-from cerebrum.llm.communication import LLMQuery
+from cerebrum.llm.apis import LLMQuery
 
 try:
     from autogen import (
@@ -586,7 +586,7 @@ def adapter_client_create(self, **config: Any) -> ModelClient.ModelClientRespons
                     tools=(params["tools"] if "tools" in params else None)
                 )
             )["response"]
-            response = {'content': response.response_message, 'tool_calls': response.tool_calls}
+            response = {'content': response["response_message"], 'tool_calls': response["tool_calls"]}
         except APITimeoutError as err:
             logger.debug(f"config {i} timed out", exc_info=True)
             if i == last:

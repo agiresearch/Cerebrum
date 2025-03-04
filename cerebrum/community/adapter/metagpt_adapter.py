@@ -5,7 +5,7 @@ from typing import Union, Optional
 
 from cerebrum.community.adapter.adapter import FrameworkType
 from .adapter import add_framework_adapter, get_request_func
-from ...llm.communication import LLMQuery
+from ...llm.apis import LLMQuery
 
 try:
     from metagpt.provider.base_llm import BaseLLM
@@ -84,7 +84,7 @@ async def adapter_acompletion_text(
     # return text
     # text = response.response_message
     # print(f"\n{text}")
-    return response.response_message
+    return response["response_message"]
 
 
 DEFAULT_CONFIG = """# Full Example: https://github.com/geekan/MetaGPT/blob/main/config/config2.example.yaml
