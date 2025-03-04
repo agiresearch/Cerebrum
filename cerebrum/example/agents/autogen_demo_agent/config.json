@@ -4,7 +4,7 @@
     "tools": [],
     "meta": {
         "author": "autogen",
-        "version": "0.0.2",
+        "version": "0.0.3",
         "license": "CC0"
     },
     "build": {
