@@ -163,14 +163,14 @@ def delete_memory(agent_name: str,
 
 def search_memories(agent_name: str,
                    query: str,
-                   limit: int = 5,
+                   k: int = 5,
                    base_url: str = aios_kernel_url) -> MemoryResponse:
     """Search for memories using a hybrid retrieval approach.
     
     Args:
         agent_name: Name of the agent to handle the request
         query: Search query text
-        limit: Maximum number of results to return
+        k: Maximum number of results to return
         base_url: Base URL for the API server
         
     Returns:
@@ -189,6 +189,6 @@ def search_memories(agent_name: str,
     """
     query = MemoryQuery(
         action_type="search",
-        params={"query": query, "limit": limit}
+        params={"query": query, "k": k}
     )
     return send_request(agent_name, query, base_url)
