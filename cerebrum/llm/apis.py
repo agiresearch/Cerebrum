@@ -137,11 +137,11 @@ class LLMQuery(Query):
     """
     query_class: str = "llm"
     llms: Optional[List[Dict[str, Any]]] = Field(default=None)
-    messages: List[Dict[str, Union[str, Any]]]
+    messages: List[Dict[str, Union[str, Any]]] = Field(default=None)
     tools: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
     action_type: Literal["chat", "tool_use", "operate_file"] = Field(default="chat")
     message_return_type: str = Field(default="text")
-    response_format: Dict[str, Dict]
+    response_format: Dict[str, Dict] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -306,7 +306,8 @@ def llm_chat_with_json_response(
         llms=llms,
         messages=messages,
         tools=None,
-        action_type="chat_with_json_response",
+        message_return_type="json",
+        action_type="chat",
         response_format=response_format
     )
     return send_request(agent_name, query, base_url)
