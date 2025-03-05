@@ -54,6 +54,34 @@ class LLMQuery(Query):
             - "tool_use": Using external tools
             - "operate_file": File operations
         message_return_type: Desired format of the response
+        response_format: Specific json format of the response, e.g., 
+
+        {"type": "json_schema", "json_schema": {"name": "response",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "keywords": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "context": {
+                                    "type": "string",
+                                },
+                                "tags": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                            },
+                            "required": ["keywords", "context", "tags"],
+                            "additionalProperties": False
+                        },
+                        "strict": True
+                }
+
     
     Examples:
         ```python
@@ -113,6 +141,7 @@ class LLMQuery(Query):
     tools: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
     action_type: Literal["chat", "tool_use", "operate_file"] = Field(default="chat")
     message_return_type: str = Field(default="text")
+    response_format: Dict[str, Dict]
 
     class Config:
         arbitrary_types_allowed = True
@@ -223,6 +252,62 @@ def llm_chat(
         messages=messages,
         tools=None,
         action_type="chat"
+    )
+    return send_request(agent_name, query, base_url)
+
+def llm_chat_with_json_response(
+        agent_name: str, 
+        messages: List[Dict[str, Any]], 
+        base_url: str = aios_kernel_url,
+        llms: List[Dict[str, Any]] = None,
+        response_format: Dict[str, Dict] = None
+    ) -> LLMResponse:
+    """
+    Perform a chat interaction with the LLM.
+    
+    Args:
+        agent_name: Name of the agent making the request
+        messages: List of message dictionaries with format:
+            [
+                {
+                    "role": "system"|"user"|"assistant",
+                    "content": str,
+                    "name": str  # Optional
+                }
+            ]
+        base_url: API base URL
+        llms: Optional list of LLM configurations
+        
+    Returns:
+        LLMResponse containing the generated response
+        
+    Examples:
+        ```python
+        response = llm_chat(
+            "agent1",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant."
+                },
+                {
+                    "role": "user",
+                    "content": "Explain quantum computing."
+                }
+            ],
+            llms=[{
+                "name": "gpt-4",
+                "temperature": 0.7
+            }]
+        )
+        ```
+    """
+    query = LLMQuery(
+        llms=llms,
+        messages=messages,
+        tools=None,
+        action_type="chat_with_json_response",
+        response_format=response_format
     )
     return send_request(agent_name, query, base_url)
 
