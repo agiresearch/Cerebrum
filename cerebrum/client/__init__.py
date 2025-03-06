@@ -29,6 +29,20 @@ class Cerebrum:
         return response.json()
 
     def _query_llm(self, agent_name: str, query: LLMQuery):
+        """
+        Send an LLM query to the AIOS kernel.
+        
+        This internal method handles the submission of LLM-specific queries to the
+        AIOS kernel's query endpoint. It formats the request according to the
+        required structure expected by the kernel API.
+        
+        Args:
+            agent_name: Name of the agent making the request
+            query: LLMQuery object containing the request details
+            
+        Returns:
+            Dict[str, Any]: The parsed JSON response from the kernel
+        """
         result = self._post("/query", {
             'query_type': 'llm',
             'agent_name': agent_name,
