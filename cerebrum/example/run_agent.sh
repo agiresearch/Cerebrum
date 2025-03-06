@@ -1,8 +1,8 @@
 # run local agent
 python cerebrum/run_agent.py \
     --mode local \
-    --path cerebrum/example/agents/test_agent \
-    --task "What is the capital of United States?"
+    --agent_path cerebrum/example/agents/test_agent \
+    --task_input "What is the capital of United States?"
 
 # run remote agent
 python cerebrum/run_agent.py \

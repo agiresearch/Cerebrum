@@ -137,7 +137,7 @@ class LLMQuery(Query):
     """
     query_class: str = "llm"
     llms: Optional[List[Dict[str, Any]]] = Field(default=None)
-    messages: List[Dict[str, Union[str, Any]]] = Field(default=None)
+    messages: List[Dict[str, Union[str, Any]]]
     tools: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
     action_type: Literal["chat", "tool_use", "operate_file"] = Field(default="chat")
     message_return_type: str = Field(default="text")
@@ -255,7 +255,7 @@ def llm_chat(
     )
     return send_request(agent_name, query, base_url)
 
-def llm_chat_with_json_response(
+def llm_chat_with_json_output(
         agent_name: str, 
         messages: List[Dict[str, Any]], 
         base_url: str = aios_kernel_url,
