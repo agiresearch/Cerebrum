@@ -102,7 +102,7 @@ def mount(
     )
     return send_request(agent_name, query, base_url)
 
-def retrieve(
+def retrieve_file(
         agent_name: str, 
         query_text: str,
         n: int,
@@ -249,7 +249,7 @@ def write_file(
     )
     return send_request(agent_name, query, base_url)
 
-def roll_back(
+def rollback_file(
         agent_name: str, 
         file_path: str,
         n: int,

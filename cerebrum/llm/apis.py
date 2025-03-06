@@ -142,8 +142,7 @@ class LLMQuery(Query):
     messages: List[Dict[str, Union[str, Any]]]
     tools: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
     action_type: Literal["chat", "tool_use", "operate_file"] = Field(default="chat")
-    message_return_type: str = Field(default="text")
-    # response_format: Dict[str, Dict] = None
+    message_return_type: Literal["text", "json"] = Field(default="text")
 
     class Config:
         arbitrary_types_allowed = True
