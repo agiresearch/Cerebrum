@@ -2,7 +2,7 @@ import unittest
 from cerebrum.llm.apis import *
 
 
-# The TestAgent class can test API llm_chat.
+# The TestAgent class can test API llm_chat..
 class TestAgent:
     def __init__(self, agent_name):
         self.agent_name = agent_name
