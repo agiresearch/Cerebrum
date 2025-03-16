@@ -103,7 +103,7 @@ def create_agentic_memory(agent_name: str,
     )
     return send_request(agent_name, query, base_url)
 
-def read_memory(agent_name: str, 
+def get_memory(agent_name: str, 
                 memory_id: str,
                 base_url: str = aios_kernel_url) -> MemoryResponse:
     """Read a memory note by ID.

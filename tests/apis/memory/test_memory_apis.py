@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional, List
 
 from cerebrum.memory.apis import (
     create_memory,
-    read_memory,
+    get_memory,
     update_memory,
     delete_memory,
     search_memories,
@@ -203,7 +203,7 @@ class TestMemoryAPIs(unittest.TestCase):
         """
         Tests memory retrieval using memory ID.
         
-        API: read_memory
+        API: get_memory
         Parameters:
             - agent_name: Name of the test agent
             - memory_id: ID from previously created memory
@@ -222,7 +222,7 @@ class TestMemoryAPIs(unittest.TestCase):
             if not self.memory_id:
                 self.fail("Failed to create test memory")
         
-        response = read_memory(
+        response = get_memory(
             agent_name=self.agent_name,
             memory_id=self.memory_id,
             base_url=self.base_url
@@ -296,7 +296,7 @@ class TestMemoryAPIs(unittest.TestCase):
         resp_data = self._get_response_data(response)
         
         # Verify the update by reading the memory again
-        read_response = read_memory(
+        read_response = get_memory(
             agent_name=self.agent_name,
             memory_id=test_memory_id,
             base_url=self.base_url
@@ -378,7 +378,7 @@ class TestMemoryAPIs(unittest.TestCase):
         resp_data = self._get_response_data(response)
         
         # Verify the update by reading the memory again
-        read_response = read_memory(
+        read_response = get_memory(
             agent_name=self.agent_name,
             memory_id=test_memory_id,
             base_url=self.base_url
@@ -455,7 +455,7 @@ class TestMemoryAPIs(unittest.TestCase):
         resp_data = self._get_response_data(response)
         
         # Verify the update by reading the memory again
-        read_response = read_memory(
+        read_response = get_memory(
             agent_name=self.agent_name,
             memory_id=test_memory_id,
             base_url=self.base_url
@@ -565,7 +565,7 @@ class TestMemoryAPIs(unittest.TestCase):
         """
         Tests memory deletion and verification of deletion.
         
-        API: delete_memory, read_memory
+        API: delete_memory, get_memory
         Parameters:
             - agent_name: Name of the test agent
             - memory_id: ID of memory to delete
@@ -597,7 +597,7 @@ class TestMemoryAPIs(unittest.TestCase):
         resp_data = self._get_response_data(response)
         
         # Verify the deletion by trying to read the memory
-        read_response = read_memory(
+        read_response = get_memory(
             agent_name=self.agent_name,
             memory_id=memory_id_to_delete,
             base_url=self.base_url
@@ -621,7 +621,7 @@ class TestMemoryAPIs(unittest.TestCase):
         """
         Tests error handling for invalid memory operations.
         
-        API: read_memory
+        API: get_memory
         Parameters:
             - agent_name: Name of the test agent
             - memory_id: Non-existent ID
@@ -633,7 +633,7 @@ class TestMemoryAPIs(unittest.TestCase):
         """
         non_existent_memory = "non_existent_memory_id_12345"
         
-        response = read_memory(
+        response = get_memory(
             agent_name=self.agent_name,
             memory_id=non_existent_memory,
             base_url=self.base_url
