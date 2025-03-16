@@ -82,8 +82,21 @@ class TestMemoryAPIs(unittest.TestCase):
             return response['response']
         return response
 
-    def test_1_create_memory(self):
-        """Test creating a new memory."""
+    def test_create_basic_memory(self):
+        """
+        Tests basic memory creation with content and metadata.
+        
+        API: create_memory
+        Parameters:
+            - agent_name: Name of the test agent
+            - content: Basic test content string
+            - metadata: Dictionary with tags and priority
+            - base_url: Server endpoint
+        
+        Verifies:
+            - Success response
+            - Memory ID generation
+        """
         response = create_memory(
             agent_name=self.agent_name,
             content=self.test_content,
@@ -105,8 +118,21 @@ class TestMemoryAPIs(unittest.TestCase):
         
         return response
     
-    def test_2_create_agentic_memory(self):
-        """Test creating a new memory."""
+    def test_create_agentic_memory_with_context(self):
+        """
+        Tests agentic memory creation after populating context with multiple memories.
+        
+        API: create_agentic_memory
+        Parameters:
+            - agent_name: Name of the test agent (creates 10 different agent memories first)
+            - content: Test content string
+            - metadata: Dictionary with tags and priority
+            - base_url: Server endpoint
+        
+        Verifies:
+            - Success response
+            - Memory ID generation in agentic context
+        """
         for i in range(10):
             # mock db
             _ = create_memory(
@@ -138,8 +164,20 @@ class TestMemoryAPIs(unittest.TestCase):
         
         return response
 
-    def test_2_create_memory_without_metadata(self):
-        """Test creating a new memory without metadata."""
+    def test_create_memory_minimal(self):
+        """
+        Tests memory creation with only required parameters (no metadata).
+        
+        API: create_memory
+        Parameters:
+            - agent_name: Name of the test agent
+            - content: Simple content string
+            - base_url: Server endpoint
+            
+        Verifies:
+            - Success with minimal parameters
+            - Memory ID generation without metadata
+        """
         content = "Test memory without metadata"
         
         response = create_memory(
@@ -161,11 +199,24 @@ class TestMemoryAPIs(unittest.TestCase):
         self.assertTrue(resp_data.get('success'))
         self.assertIsNotNone(resp_data.get('memory_id'))
 
-    def test_3_read_memory(self):
-        """Test reading a memory by ID."""
+    def test_retrieve_memory_by_id(self):
+        """
+        Tests memory retrieval using memory ID.
+        
+        API: read_memory
+        Parameters:
+            - agent_name: Name of the test agent
+            - memory_id: ID from previously created memory
+            - base_url: Server endpoint
+        
+        Verifies:
+            - Success response
+            - Content matches original
+            - Metadata integrity
+        """
         # First create a memory if we don't have one
         if not self.memory_id:
-            create_response = self.test_1_create_memory()
+            create_response = self.create_basic_memory()
             create_resp_data = self._get_response_data(create_response)
             self.memory_id = create_resp_data.get('memory_id')
             if not self.memory_id:
@@ -194,8 +245,23 @@ class TestMemoryAPIs(unittest.TestCase):
                     print(f"  Metadata key: {key}, Expected: {self.test_metadata[key]}, Actual: {metadata[key]}")
                     self.assertEqual(metadata[key], self.test_metadata[key])
 
-    def test_4_update_memory_full(self):
-        """Test updating both content and metadata of a memory."""
+    def test_update_memory_complete(self):
+        """
+        Tests full memory update (both content and metadata).
+        
+        API: update_memory
+        Parameters:
+            - agent_name: Name of the test agent
+            - memory_id: ID of target memory
+            - content: Updated content string
+            - metadata: Updated metadata dictionary
+            - base_url: Server endpoint
+        
+        Verifies:
+            - Success response
+            - Content update
+            - Metadata update
+        """
         # Create a new memory specifically for this test
         create_response = create_memory(
             agent_name=self.agent_name,
@@ -263,8 +329,22 @@ class TestMemoryAPIs(unittest.TestCase):
         if metadata and 'tags' in metadata:
             self.assertEqual(set(metadata['tags']), set(new_metadata['tags']))
 
-    def test_5_update_memory_content_only(self):
-        """Test updating only the content of a memory."""
+    def test_update_memory_content(self):
+        """
+        Tests partial memory update (content only).
+        
+        API: update_memory
+        Parameters:
+            - agent_name: Name of the test agent
+            - memory_id: ID of target memory
+            - content: New content string
+            - metadata: None (unchanged)
+            - base_url: Server endpoint
+        
+        Verifies:
+            - Success response
+            - Content update while preserving metadata
+        """
         # Create a new memory specifically for this test
         create_response = create_memory(
             agent_name=self.agent_name,
@@ -326,8 +406,22 @@ class TestMemoryAPIs(unittest.TestCase):
         self.assertTrue(read_resp_data.get('success'))
         self.assertEqual(read_resp_data.get('content'), new_content)
 
-    def test_6_update_memory_metadata_only(self):
-        """Test updating only the metadata of a memory."""
+    def test_update_memory_metadata(self):
+        """
+        Tests partial memory update (metadata only).
+        
+        API: update_memory
+        Parameters:
+            - agent_name: Name of the test agent
+            - memory_id: ID of target memory
+            - content: None (unchanged)
+            - metadata: Updated metadata dictionary
+            - base_url: Server endpoint
+        
+        Verifies:
+            - Success response
+            - Metadata update while preserving content
+        """
         # Create a new memory specifically for this test
         create_response = create_memory(
             agent_name=self.agent_name,
@@ -393,8 +487,22 @@ class TestMemoryAPIs(unittest.TestCase):
         if metadata and 'tags' in metadata:
             self.assertEqual(set(metadata['tags']), set(new_metadata['tags']))
 
-    def test_7_search_memories(self):
-        """Test searching for memories."""
+    def test_search_memories_with_query(self):
+        """
+        Tests memory search functionality with various test cases.
+        
+        API: search_memories
+        Parameters:
+            - agent_name: Name of the test agent
+            - query: Search string ("meeting")
+            - k: Number of results to return (3)
+            - base_url: Server endpoint
+        
+        Verifies:
+            - Success response
+            - Result count <= k
+            - Relevance of search results
+        """
         # Create a few memories for testing search
         memory_contents = [
             "Meeting notes: Discussed Q1 goals and objectives",
@@ -453,11 +561,23 @@ class TestMemoryAPIs(unittest.TestCase):
                     break
             self.assertTrue(found_meeting, "Expected to find at least one result containing 'meeting'")
 
-    def test_8_delete_memory(self):
-        """Test deleting a memory."""
+    def test_delete_memory_by_id(self):
+        """
+        Tests memory deletion and verification of deletion.
+        
+        API: delete_memory, read_memory
+        Parameters:
+            - agent_name: Name of the test agent
+            - memory_id: ID of memory to delete
+            - base_url: Server endpoint
+        
+        Verifies:
+            - Success response for deletion
+            - Failed read attempt after deletion
+        """
         # First create a memory if we don't have one
         if not self.memory_id:
-            create_response = self.test_1_create_memory()
+            create_response = self.create_basic_memory()
             create_resp_data = self._get_response_data(create_response)
             self.memory_id = create_resp_data.get('memory_id')
             if not self.memory_id:
@@ -497,8 +617,20 @@ class TestMemoryAPIs(unittest.TestCase):
         self.assertFalse(read_resp_data.get('success'))
         self.assertIsNotNone(read_resp_data.get('error'))
 
-    def test_9_error_handling(self):
-        """Test error handling in memory operations."""
+    def test_handle_memory_errors(self):
+        """
+        Tests error handling for invalid memory operations.
+        
+        API: read_memory
+        Parameters:
+            - agent_name: Name of the test agent
+            - memory_id: Non-existent ID
+            - base_url: Server endpoint
+        
+        Verifies:
+            - Appropriate error response
+            - Error message presence
+        """
         non_existent_memory = "non_existent_memory_id_12345"
         
         response = read_memory(
