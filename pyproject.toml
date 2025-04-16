@@ -41,6 +41,7 @@ exclude = [
 files = ["requirements.txt"]
 
 [project.scripts]
+list-available-llms = "cerebrum.commands.list_available_llms:main"
 run-agent = "cerebrum.commands.run_agent:main"
 download-agent = "cerebrum.commands.download_agent:main"
 upload-agent = "cerebrum.commands.upload_agent:main"

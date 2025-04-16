@@ -87,6 +87,11 @@ The AIOS-Agent SDK is designed for agent users and developers, enabling them to 
 📝 See [here](https://docs.aios.foundation/getting-started/installation).
 
 Below are some useful commands to use
+- [List available LLMs](./cerebrum/commands/list_available_llms.py)
+    ```bash
+    list-available-llms
+    ```
+
 - [List agents from agenthub](./cerebrum/commands/list_agenthub_agents.py)
     ```bash
     list-agenthub-agents

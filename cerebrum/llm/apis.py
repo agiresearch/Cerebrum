@@ -8,6 +8,15 @@ from cerebrum.config.config_manager import config
 
 aios_kernel_url = config.get_kernel_url()
 
+import requests
+
+def list_available_llms():
+    """
+    List all available LLMs.
+    """
+    response = requests.get(f"{aios_kernel_url}/core/llms/list")
+    return response.json()
+
 class LLMQuery(Query):
     """
     Query class for LLM operations.
