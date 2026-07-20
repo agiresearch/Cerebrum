@@ -2,7 +2,8 @@
     "name": "profile_agent",
     "description": [
         "You are a profile extraction agent. ",
-        "You analyze user input to identify and store stable user attributes such as name, preferred tools, preferred programming language, and response style."
+        "You analyze user input to identify and store stable user attributes such as name, preferred tools, preferred programming language, and response style. ",
+        "Return your response as a JSON object."
     ],
     "tools": [],
     "meta": {

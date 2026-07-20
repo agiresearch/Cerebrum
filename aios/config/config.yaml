@@ -1,0 +1,29 @@
+##############################################################################
+# AIOS Kernel Configuration
+##############################################################################
+# This file defines the kernel-level settings for the memory subsystem.
+# Existing keys (auto_inject, auto_extract, relevance_threshold,
+# max_injected_memories, max_memory_tokens) are preserved. The new
+# write_barrier block is additive.
+
+memory:
+  # --- Existing kernel memory settings ---
+  auto_inject: true
+  auto_extract: true
+  relevance_threshold: 0.3
+  max_injected_memories: 10
+  max_memory_tokens: 2000
+
+  # --- Write barrier settings (new) ---
+  # The write barrier gates cross-agent retrieval until in-flight writes
+  # for the target user_id are visible in the Mem0 store.
+  write_barrier:
+    # Kill-switch: set to false to disable the barrier without code changes.
+    # When false, shouldInvokeBarrier returns False unconditionally.
+    enabled: true
+    # Maximum time (ms) the barrier will wait for pending writes to become
+    # visible before timing out and proceeding with whatever state is committed.
+    timeout_ms: 2000
+    # Poll interval (ms) between get_all visibility probes during the
+    # bounded-wait loop.
+    poll_interval_ms: 25

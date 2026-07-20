@@ -123,10 +123,12 @@ class TrialResult(BaseModel):
 
     trial_index: int
     condition: str
+    method: str = ""
     profile_usage_score: Optional[int] = None
     task_usage_score: Optional[int] = None
     integration_score: Optional[int] = None
     memory_counts: MemoryCounts = MemoryCounts()
+    retrieved_context_count: Optional[int] = None
     latency_seconds: Optional[float] = None
     follow_up_query: str = ""
     assistant_response: str = ""
@@ -174,6 +176,7 @@ class ExperimentMetadata(BaseModel):
     timestamp: str
     kernel_url: str
     conditions_run: List[str]
+    methods_run: List[str] = []
 
 
 class ConditionResults(BaseModel):

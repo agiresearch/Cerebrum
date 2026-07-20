@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 
 from cerebrum.llm.apis import llm_chat_with_json_output
 from cerebrum.memory.apis import create_memory, update_memory, search_memories
@@ -14,6 +15,8 @@ from cerebrum.example.agents.shared_memory_utils import (
 )
 
 aios_kernel_url = config.get_kernel_url()
+
+logger = logging.getLogger(__name__)
 
 
 class ProfileAgent:
@@ -55,8 +58,24 @@ class ProfileAgent:
             profile_data = self._extract_profile(task_input)
             self.rounds += 1
 
-            # Upsert profile memory using extracted user_name as user_id
-            user_id = getattr(self, 'user_id', profile_data.get("user_name", self.agent_name))
+            # Upsert profile memory using explicit request-scoped user_id only
+            user_id = getattr(self, 'user_id', None)
+            if not user_id or not str(user_id).strip():
+                logger.warning(
+                    "Skipping memory write: no explicit user_id provided to ProfileAgent"
+                )
+                result_summary = (
+                    f"Extracted profile (memory write skipped — no user_id): "
+                    f"tools={profile_data.get('preferred_tools', [])}, "
+                    f"language={profile_data.get('preferred_language', '')}, "
+                    f"style={profile_data.get('response_style', '')}"
+                )
+                return {
+                    "agent_name": self.agent_name,
+                    "result": result_summary,
+                    "rounds": self.rounds,
+                }
+            user_id = str(user_id).strip()
             memory_ids = self._upsert_profile_memory(user_id, profile_data)
 
             result_summary = (
@@ -127,6 +146,7 @@ class ProfileAgent:
             agent_name=self.agent_name,
             messages=self.messages,
             base_url=aios_kernel_url,
+            llms=getattr(self, 'llms', None),
             response_format=response_format,
         )
 
@@ -156,6 +176,7 @@ class ProfileAgent:
             agent_name=self.agent_name,
             query=f"profile {user_id}",
             base_url=aios_kernel_url,
+            user_id=user_id,
         )
 
         existing_results = []

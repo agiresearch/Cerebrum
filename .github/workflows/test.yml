@@ -53,78 +53,11 @@ jobs:
     - name: Install Cerebrum
       run: |
         python -m pip install -e aios_root/Cerebrum/
-    # Create AIOS kernel config if missing
-    - name: Create AIOS kernel config
-      run: |
-        mkdir -p aios_root/aios/config
-        if [ ! -f aios_root/aios/config/config.yaml ]; then
-          cat > aios_root/aios/config/config.yaml << 'EOF'
-        llm:
-          max_gpu_memory: null
-          kernel_max_new_tokens: 512
-        memory:
-          auto_extract: true
-          auto_inject: true
-          relevance_threshold: 0.3
-          max_injected_memories: 10
-          max_memory_tokens: 2000
-        storage:
-          root_dir: root
-        server:
-          hostname: localhost
-          port: 8000
-        EOF
-          echo "Created default config.yaml"
-        else
-          echo "config.yaml already exists"
-        fi
 
-    # Run AIOS kernel
-    - name: Run AIOS kernel in background
-      run: |
-        cd aios_root
-        bash runtime/launch_kernel.sh &>../kernel.log &
-        KERNEL_PID=$!
-        cd ..
-        
-        # Set maximum wait time (60 seconds)
-        max_wait=60
-        start_time=$SECONDS
-        
-        # Dynamically check if the process is running until it succeeds or times out
-        while true; do
-          if ! ps -p $KERNEL_PID > /dev/null; then
-            echo "Kernel process died. Checking logs:"
-            cat kernel.log
-            exit 1
-          fi
-          
-          if nc -z localhost 8000; then
-            if curl -s http://localhost:8000/health; then
-              echo "Kernel successfully started and healthy"
-              break
-            fi
-          fi
-          
-          # Check if timed out
-          elapsed=$((SECONDS - start_time))
-          if [ $elapsed -ge $max_wait ]; then
-            echo "Timeout after ${max_wait} seconds. Kernel failed to start properly."
-            cat kernel.log
-            exit 1
-          fi
-          
-          echo "Waiting for kernel to start... (${elapsed}s elapsed)"
-          sleep 1
-        done
-    # Run integration test
+    # Install and start Ollama BEFORE the kernel so the model is reachable at startup
     - name: Download and install Ollama
       run: |
         curl -fsSL https://ollama.com/install.sh | sh
-
-    - name: Pull Ollama models
-      run: |
-        ollama pull qwen2.5:7b
 
     - name: Start Ollama serve
       run: |
@@ -137,18 +70,74 @@ jobs:
             echo "Ollama server started successfully"
             break
           fi
-          
-          # Check if timed out
           elapsed=$((SECONDS - start_time))
           if [ $elapsed -ge $max_wait ]; then
-            echo "Timeout after ${max_wait} seconds. Ollama server failed to start properly."
+            echo "Timeout after ${max_wait} seconds. Ollama server failed to start."
             exit 1
           fi
-          
           echo "Waiting for Ollama server to start... (${elapsed}s elapsed)"
           sleep 1
         done
-          
+
+    - name: Pull Ollama models
+      run: |
+        ollama pull qwen2.5:7b
+        ollama pull nomic-embed-text
+
+    # Provision AIOS kernel config from the shipped example
+    - name: Create AIOS kernel config
+      run: |
+        EXAMPLE_PATH=$(find aios_root -name "config.yaml.example" -type f | head -n 1)
+        if [ -z "$EXAMPLE_PATH" ]; then
+          echo "ERROR: config.yaml.example not found in AIOS repo"
+          find aios_root -name "config.yaml*" -type f
+          exit 1
+        fi
+        TARGET_PATH="$(dirname "$EXAMPLE_PATH")/config.yaml"
+        cp "$EXAMPLE_PATH" "$TARGET_PATH"
+        echo "Copied $EXAMPLE_PATH to $TARGET_PATH"
+        echo "=== config.yaml contents ==="
+        cat "$TARGET_PATH"
+
+    # Run AIOS kernel
+    - name: Run AIOS kernel in background
+      run: |
+        cd aios_root
+        bash runtime/launch_kernel.sh &>../kernel.log &
+        KERNEL_PID=$!
+        cd ..
+
+        # Set maximum wait time (60 seconds)
+        max_wait=60
+        start_time=$SECONDS
+
+        # Dynamically check if the process is running until it succeeds or times out
+        while true; do
+          if ! ps -p $KERNEL_PID > /dev/null; then
+            echo "Kernel process died. Checking logs:"
+            cat kernel.log
+            exit 1
+          fi
+
+          if nc -z localhost 8000; then
+            if curl -s http://localhost:8000/health; then
+              echo "Kernel successfully started and healthy"
+              break
+            fi
+          fi
+
+          # Check if timed out
+          elapsed=$((SECONDS - start_time))
+          if [ $elapsed -ge $max_wait ]; then
+            echo "Timeout after ${max_wait} seconds. Kernel failed to start properly."
+            cat kernel.log
+            exit 1
+          fi
+
+          echo "Waiting for kernel to start... (${elapsed}s elapsed)"
+          sleep 1
+        done
+
     - name: Run all tests
       run: |
         cd aios_root/Cerebrum
@@ -166,9 +155,23 @@ jobs:
           fi
         }
 
+        # Function to check if a path is in the integration directory
+        # Integration tests require a kernel with the write-barrier fix
+        # and specific model availability (GPT-4o) — skip in CI.
+        is_integration_test() {
+          local dir_path=$(dirname "$1")
+          if [[ "$dir_path" == *"integration"* ]]; then
+            return 0  # True in bash
+          else
+            return 1  # False in bash
+          fi
+        }
+
         # Process test files
         find tests -type f -name "*.py" | while read -r test_file; do
-          if contains_agent_or_llm "$test_file"; then
+          if is_integration_test "$test_file"; then
+            echo "Skipping integration test (requires write-barrier kernel): $test_file"
+          elif contains_agent_or_llm "$test_file"; then
             # For agent or llm directories, only run ollama tests
             if [[ "$test_file" == *"ollama"* ]]; then
               echo "Running Ollama test in agent/llm directory: $test_file"

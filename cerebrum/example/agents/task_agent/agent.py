@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 
 from cerebrum.llm.apis import llm_chat_with_json_output
 from cerebrum.memory.apis import create_memory, update_memory, search_memories
@@ -14,6 +15,8 @@ from cerebrum.example.agents.shared_memory_utils import (
 )
 
 aios_kernel_url = config.get_kernel_url()
+
+logger = logging.getLogger(__name__)
 
 
 class TaskAgent:
@@ -55,8 +58,26 @@ class TaskAgent:
             context_data = self._extract_task_context(task_input)
             self.rounds += 1
 
-            # Upsert task context memory using current_project as user_id
-            user_id = getattr(self, 'user_id', context_data.get("current_project", self.agent_name))
+            # Upsert task context memory using explicit request-scoped user_id only
+            user_id = getattr(self, 'user_id', None)
+            if not user_id or not str(user_id).strip():
+                logger.warning(
+                    "Skipping memory write: no explicit user_id provided to TaskAgent"
+                )
+                result_summary = (
+                    f"Extracted task context (memory write skipped — no user_id): "
+                    f"project={context_data.get('current_project', '')}, "
+                    f"experiment={context_data.get('active_experiment', '')}, "
+                    f"goals={context_data.get('goals', [])}, "
+                    f"blockers={context_data.get('blockers', [])}, "
+                    f"next_steps={context_data.get('next_steps', [])}"
+                )
+                return {
+                    "agent_name": self.agent_name,
+                    "result": result_summary,
+                    "rounds": self.rounds,
+                }
+            user_id = str(user_id).strip()
             memory_ids = self._upsert_task_memory(user_id, context_data)
 
             result_summary = (
@@ -137,6 +158,7 @@ class TaskAgent:
             agent_name=self.agent_name,
             messages=self.messages,
             base_url=aios_kernel_url,
+            llms=getattr(self, 'llms', None),
             response_format=response_format,
         )
 
@@ -166,6 +188,7 @@ class TaskAgent:
             agent_name=self.agent_name,
             query=f"task context {user_id}",
             base_url=aios_kernel_url,
+            user_id=user_id,
         )
 
         existing_results = []

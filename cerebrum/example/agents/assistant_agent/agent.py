@@ -15,11 +15,12 @@ class AssistantAgent:
     - auto_inject retrieves and injects relevant memories into context
     """
 
-    def __init__(self, agent_name: str):
+    def __init__(self, agent_name: str, llms: list | None = None):
         self.agent_name = agent_name
         self.config = self.load_config()
         self.messages = []
         self.rounds = 0
+        self.llms = llms  # Optional model override, e.g. [{"name": "qwen2.5:7b", "backend": "ollama"}]
 
     def load_config(self) -> dict:
         """Load agent configuration from config.json in the agent's directory."""
@@ -53,6 +54,8 @@ class AssistantAgent:
                 agent_name=self.agent_name,
                 messages=self.messages,
                 base_url=aios_kernel_url,
+                llms=self.llms,
+                user_id=getattr(self, "user_id", None),
             )
 
             result_text = response["response"]["response_message"] if response else ""

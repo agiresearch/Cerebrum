@@ -2,7 +2,8 @@
     "name": "task_agent",
     "description": [
         "You are a task context extraction agent. ",
-        "You analyze user input to identify and store short- to medium-term working context such as current project, active experiment, goals, blockers, and next steps."
+        "You analyze user input to identify and store short- to medium-term working context such as current project, active experiment, goals, blockers, and next steps. ",
+        "Return your response as a JSON object."
     ],
     "tools": [],
     "meta": {

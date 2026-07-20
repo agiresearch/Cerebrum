@@ -95,12 +95,29 @@ def _clamp_score(value: Any, name: str) -> int:
     return max(1, min(5, v))
 
 
+def _extract_json_from_text(text: str) -> dict | None:
+    """Try to extract a JSON object from free-form text.
+
+    Looks for the first ``{`` and last ``}`` in the text and attempts
+    to parse the substring as JSON. Returns None if no valid JSON found.
+    """
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return None
+    try:
+        return json.loads(text[start:end + 1])
+    except json.JSONDecodeError:
+        return None
+
+
 class LLMJudge:
     """Evaluates assistant responses using a 3-score rubric."""
 
-    def __init__(self, agent_name: str = "eval_judge"):
+    def __init__(self, agent_name: str = "eval_judge", llms: list | None = None):
         self.agent_name = agent_name
         self.kernel_url = config.get_kernel_url()
+        self.llms = llms  # Optional model override, e.g. [{"name": "gpt-4.5", "backend": "openai"}]
 
     def _build_judge_prompt(
         self,
@@ -174,14 +191,17 @@ class LLMJudge:
             "logically follow from them\n"
             "  1 = No integration; response addresses at most one source "
             "or is entirely generic\n\n"
-            "Return your scores and reasoning as JSON."
+            "Respond with ONLY a JSON object (no markdown fences, no explanation, no text before or after). "
+            "Use exactly these keys:\n"
+            '{"profile_usage_score": <int 1-5>, "task_usage_score": <int 1-5>, "integration_score": <int 1-5>, '
+            '"profile_usage_reasoning": "<string>", "task_usage_reasoning": "<string>", "integration_reasoning": "<string>"}'
         )
         return [
             {
                 "role": "system",
                 "content": (
-                    "You are an expert evaluator assessing the quality "
-                    "of an AI assistant's response. "
+                    "You are an expert evaluator. You MUST respond with ONLY a valid JSON object. "
+                    "No markdown code fences. No explanation text. No preamble. Just the raw JSON object. "
                     "The assistant had access to shared memories injected "
                     "by the kernel containing the user's profile and task "
                     "context. A concise response that demonstrates awareness "
@@ -238,11 +258,56 @@ class LLMJudge:
                 messages=messages,
                 base_url=self.kernel_url,
                 response_format=response_format,
+                llms=self.llms,
             )
 
             raw = llm_response["response"]["response_message"]
-            data = json.loads(raw) if isinstance(raw, str) else raw
-            data = _normalize_judge_keys(data)
+            logger.debug("Judge raw response_message: %r", raw)
+            if raw is None:
+                # Fallback: retry with plain llm_chat (kernel may not support
+                # response_format passthrough for chat_with_json_output)
+                logger.debug(
+                    "Falling back to llm_chat for judge scoring."
+                )
+                from cerebrum.llm.apis import llm_chat
+                llm_response = llm_chat(
+                    agent_name=self.agent_name,
+                    messages=messages,
+                    base_url=self.kernel_url,
+                    llms=self.llms,
+                )
+                raw = llm_response["response"]["response_message"]
+                if raw is None:
+                    logger.warning(
+                        "Judge LLM returned None response_message on fallback — "
+                        "model may be unavailable. "
+                        "llms=%s kernel=%s",
+                        self.llms,
+                        self.kernel_url,
+                    )
+                    return JudgeScores()
+            # Try to parse as JSON; if it fails, try to extract JSON from text
+            if isinstance(raw, str):
+                try:
+                    data = json.loads(raw)
+                except json.JSONDecodeError:
+                    # Try to extract JSON object from free-form text
+                    data = _extract_json_from_text(raw)
+                    if data is None:
+                        logger.warning("Judge LLM returned non-JSON text: %s", raw[:200])
+                        return JudgeScores()
+            else:
+                data = raw
+            if not isinstance(data, dict):
+                logger.warning("Judge LLM returned non-dict data: %r", data)
+                return JudgeScores()
+            logger.debug("Judge parsed data before normalization: %s", data)
+
+            # If the dict already has the exact keys we need, use them directly
+            if all(k in data for k in ("profile_usage_score", "task_usage_score", "integration_score")):
+                pass  # data already has correct keys
+            else:
+                data = _normalize_judge_keys(data)
 
             pu = data.get("profile_usage_score")
             tu = data.get("task_usage_score")
@@ -320,6 +385,8 @@ def keyword_score(response: str, keywords: list) -> int:
     """
     if not keywords:
         return 1
+    if not response:
+        return 1
     response_lower = response.lower()
     hits = sum(1 for kw in keywords if kw in response_lower)
     ratio = hits / len(keywords)
@@ -343,8 +410,8 @@ class HybridJudge:
     integration. The final score is the average of both, rounded.
     """
 
-    def __init__(self, agent_name: str = "eval_judge"):
-        self.llm_judge = LLMJudge(agent_name=agent_name)
+    def __init__(self, agent_name: str = "eval_judge", llms: list | None = None):
+        self.llm_judge = LLMJudge(agent_name=agent_name, llms=llms)
 
     def evaluate(
         self,

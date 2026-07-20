@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "protocol": {
+    "name": "mixed_personalization_source_grounded_v1",
+    "assistant_model": "gpt-4o",
+    "judge_score_dimension": "integration",
+    "sampling_seed": 20260715,
+    "blinding_seed": 20260716,
+    "unique_items_per_method": 6,
+    "duplicate_count": 6,
+    "minimum_duplicate_separation": 3,
+    "total_rating_items": 30,
+    "question_stratification": null,
+    "display_context_provenance": "synthetic_source_context",
+    "is_exact_model_visible_context": false
+  },
+  "sources": {
+    "naive_concat": {
+      "path": "results/gpt4o_naive_concat/results_naive_concat.json"
+    },
+    "vanilla_rag": {
+      "path": "results/gpt4o_vanilla_rag/results_vanilla_rag.json"
+    },
+    "mem0_default": {
+      "path": "results/gpt4o_mem0_default/results_mem0_default.json"
+    },
+    "kernel_shared": {
+      "path": "results/gpt4o_kernel_shared/results_kernel_shared.json"
+    }
+  }
+}

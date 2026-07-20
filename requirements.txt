@@ -1,6 +1,21 @@
+# Core SDK dependencies
 requests
 platformdirs
 pydantic
 mcp
 datasets
+
+# Benchmark harness
 tqdm
+hypothesis
+
+# External agent frameworks (used by benchmarks)
+chromadb
+mem0ai
+ollama
+openai
+scikit-learn
+
+# Utilities
+python-dotenv
+pyyaml

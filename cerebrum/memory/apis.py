@@ -340,9 +340,12 @@ def search_memories(agent_name: str,
     if user_id is not None and not user_id.strip():
         raise ValueError("user_id must be a non-empty string or None")
 
+    # Normalize: strip whitespace from explicit user_id
+    resolved_user_id = str(user_id).strip() if user_id is not None else None
+
     params: Dict[str, Any] = {"content": query, "k": k}
-    if user_id is not None:
-        params["user_id"] = user_id
+    if resolved_user_id is not None:
+        params["user_id"] = resolved_user_id
     if sharing_policy is not None:
         params["sharing_policy"] = sharing_policy
 

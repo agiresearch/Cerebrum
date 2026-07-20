@@ -6,9 +6,10 @@ synthetic profiles, task contexts, and follow-up queries for each trial.
 
 import json
 import logging
+import uuid
 from typing import Dict, Any, List
 
-from cerebrum.llm.apis import llm_chat_with_json_output
+from cerebrum.llm.apis import llm_chat, llm_chat_with_json_output
 from cerebrum.config.config_manager import config
 
 from benchmarks.shared_memory.models import (
@@ -18,6 +19,42 @@ from benchmarks.shared_memory.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _robust_llm_json_call(agent_name, messages, kernel_url, response_format, llms):
+    """Call llm_chat_with_json_output with fallback to llm_chat.
+
+    Some kernel configurations return None for response_message when using
+    the chat_with_json_output action type. This helper falls back to plain
+    llm_chat and extracts JSON from the free-form text response.
+    """
+    llm_response = llm_chat_with_json_output(
+        agent_name=agent_name,
+        messages=messages,
+        base_url=kernel_url,
+        response_format=response_format,
+        llms=llms,
+    )
+
+    raw = llm_response["response"]["response_message"]
+    if raw is not None:
+        return raw
+
+    # Fallback to plain llm_chat
+    logger.debug("llm_chat_with_json_output returned None, falling back to llm_chat.")
+    llm_response = llm_chat(
+        agent_name=agent_name,
+        messages=messages,
+        base_url=kernel_url,
+        llms=llms,
+    )
+    raw = llm_response["response"]["response_message"]
+    if raw is None:
+        raise RuntimeError(
+            f"LLM returned None response_message on both attempts. "
+            f"llms={llms} kernel={kernel_url}"
+        )
+    return raw
 
 
 def _unwrap_nested(data: dict, required_keys: List[str]) -> dict:
@@ -56,14 +93,21 @@ def _validate_vague_query(
 class SyntheticDataGenerator:
     """Generates synthetic trial data (profile, task context, query) via LLM."""
 
-    def __init__(self, agent_name: str = "eval_harness"):
+    def __init__(self, agent_name: str = "eval_harness", llms: list | None = None, run_id: str | None = None):
         """Initialise the generator.
 
         Args:
             agent_name: Agent identity used for SDK LLM calls.
+            llms: Optional model override, e.g. [{"name": "qwen2.5:7b", "backend": "ollama"}].
+            run_id: Optional run-specific discriminator appended to user_id
+                for namespace isolation. When None, a UUID4 short suffix is
+                generated automatically to prevent residual state pollution
+                from prior runs.
         """
         self.agent_name = agent_name
         self.kernel_url = config.get_kernel_url()
+        self.llms = llms
+        self.run_id = run_id or uuid.uuid4().hex[:8]
 
     # ------------------------------------------------------------------
     # Profile generation
@@ -130,14 +174,9 @@ class SyntheticDataGenerator:
             },
         }
 
-        llm_response = llm_chat_with_json_output(
-            agent_name=self.agent_name,
-            messages=messages,
-            base_url=self.kernel_url,
-            response_format=response_format,
+        raw = _robust_llm_json_call(
+            self.agent_name, messages, self.kernel_url, response_format, self.llms
         )
-
-        raw = llm_response["response"]["response_message"]
         data = json.loads(raw) if isinstance(raw, str) else raw
         data = _unwrap_nested(data, ["user_name", "preferred_tools", "preferred_language", "response_style"])
         return SyntheticProfile(**data)
@@ -224,6 +263,7 @@ class SyntheticDataGenerator:
             messages=messages,
             base_url=self.kernel_url,
             response_format=response_format,
+            llms=self.llms,
         )
 
         raw = llm_response["response"]["response_message"]
@@ -319,6 +359,7 @@ class SyntheticDataGenerator:
                 messages=messages,
                 base_url=self.kernel_url,
                 response_format=response_format,
+                llms=self.llms,
             )
 
             raw = llm_response["response"]["response_message"]
@@ -408,6 +449,7 @@ class SyntheticDataGenerator:
             messages=messages,
             base_url=self.kernel_url,
             response_format=response_format,
+            llms=self.llms,
         )
 
         raw = llm_response["response"]["response_message"]
@@ -423,20 +465,27 @@ class SyntheticDataGenerator:
         """Generate all synthetic data for a single trial.
 
         Orchestrates profile → task context → plausible actions → follow-up
-        query generation, and derives a stable user_id from the profile.
+        query generation, and derives a stable user_id from the profile scoped
+        to the current run to prevent residual state pollution.
+
+        The user_id format is ``{name}_{run_id}_t{trial_index}`` where name
+        is the lowercase underscore-separated profile name, run_id is the
+        run-specific discriminator, and trial_index guarantees uniqueness
+        even when the LLM generates duplicate names within a single run.
 
         Args:
             trial_index: Zero-based trial number.
 
         Returns:
             A ``SyntheticTrialData`` bundle with profile, task context,
-            follow-up query, plausible actions, and user_id.
+            follow-up query, plausible actions, and run-scoped user_id.
         """
         profile = self.generate_profile(trial_index)
         task_context = self.generate_task_context(trial_index, profile)
         plausible_actions = self.generate_plausible_actions(profile, task_context)
         follow_up_query = self.generate_vague_query(profile, task_context)
-        user_id = profile.user_name.lower().replace(" ", "_")
+        base_name = profile.user_name.lower().replace(" ", "_")
+        user_id = f"{base_name}_{self.run_id}_t{trial_index}"
 
         return SyntheticTrialData(
             profile=profile,

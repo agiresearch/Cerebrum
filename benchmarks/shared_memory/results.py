@@ -93,18 +93,22 @@ class ResultsWriter:
             failed_trials=failed_trials,
         )
 
-    def write_json(self, experiment: ExperimentResults) -> str:
-        """Write the full experiment results to results.json.
+    def write_json(self, experiment: ExperimentResults, filename: str | None = None) -> str:
+        """Write the full experiment results to a JSON file.
 
         Args:
             experiment: Complete experiment results to serialize.
+            filename: Optional output filename. When provided, used as the
+                output file name (not path) within the output directory.
+                Defaults to ``"results.json"`` when not provided.
 
         Returns:
             File path of the written JSON file.
         """
         os.makedirs(self.output_dir, exist_ok=True)
-        file_path = os.path.join(self.output_dir, "results.json")
-        with open(file_path, "w") as f:
+        output_filename = filename if filename is not None else "results.json"
+        file_path = os.path.join(self.output_dir, output_filename)
+        with open(file_path, "w", encoding="utf-8") as f:
             json.dump(experiment.model_dump(), f, indent=2)
         return file_path
 
@@ -121,6 +125,8 @@ class ResultsWriter:
         file_path = os.path.join(self.output_dir, "results.csv")
         columns = [
             "condition",
+            "method",
+            "retrieved_context_count",
             "trial_index",
             "profile_usage_score",
             "task_usage_score",
@@ -134,7 +140,7 @@ class ResultsWriter:
             "query",
             "response",
         ]
-        with open(file_path, "w", newline="") as f:
+        with open(file_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(columns)
             for condition_result in experiment.conditions:
@@ -144,6 +150,8 @@ class ResultsWriter:
                     cross_found = retrieval_log.cross_agent_found if retrieval_log else False
                     writer.writerow([
                         trial.condition,
+                        trial.method,
+                        trial.retrieved_context_count,
                         trial.trial_index,
                         trial.profile_usage_score,
                         trial.task_usage_score,
@@ -158,3 +166,108 @@ class ResultsWriter:
                         trial.assistant_response,
                     ])
         return file_path
+
+    def print_summary(self, experiment: ExperimentResults) -> None:
+        """Print a comparative summary table to stdout.
+
+        When more than one method is present in the experiment, includes a
+        delta column showing (method_mean - kernel_shared_mean) for
+        profile_usage, task_usage, and integration. When only one method is
+        present, omits the delta column. Always includes total and failed
+        trial counts per method.
+
+        Args:
+            experiment: Complete experiment results to summarize.
+        """
+        conditions = experiment.conditions
+        if not conditions:
+            print("No results to summarize.")
+            return
+
+        # Determine whether to show delta column
+        multi_method = len(conditions) > 1
+
+        # Find kernel_shared baseline for delta computation
+        kernel_summary = None
+        if multi_method:
+            for c in conditions:
+                if c.condition == "kernel_shared":
+                    kernel_summary = c.summary
+                    break
+
+        # Column widths
+        col_method = 20
+        col_metric = 10
+
+        if multi_method and kernel_summary is not None:
+            header = (
+                f"{'Method':<{col_method}} "
+                f"{'Profile':>{col_metric}} "
+                f"{'Task':>{col_metric}} "
+                f"{'Integration':>{col_metric}} "
+                f"{'Latency':>{col_metric}} "
+                f"{'DeltaProfile':>{col_metric+2}} "
+                f"{'DeltaTask':>{col_metric+2}} "
+                f"{'DeltaInteg':>{col_metric+2}} "
+                f"{'Total':>7} "
+                f"{'Failed':>7}"
+            )
+        else:
+            header = (
+                f"{'Method':<{col_method}} "
+                f"{'Profile':>{col_metric}} "
+                f"{'Task':>{col_metric}} "
+                f"{'Integration':>{col_metric}} "
+                f"{'Latency':>{col_metric}} "
+                f"{'Total':>7} "
+                f"{'Failed':>7}"
+            )
+
+        separator = "-" * len(header)
+        print()
+        print("=== Personalization Method Comparison ===")
+        print(separator)
+        print(header)
+        print(separator)
+
+        for cond in conditions:
+            s = cond.summary
+            method = cond.condition
+
+            profile_mean = s.profile_usage.mean
+            task_mean = s.task_usage.mean
+            integ_mean = s.integration.mean
+            latency_mean = s.latency.mean
+            total = s.total_trials
+            failed = s.failed_trials
+
+            if multi_method and kernel_summary is not None:
+                delta_profile = profile_mean - kernel_summary.profile_usage.mean
+                delta_task = task_mean - kernel_summary.task_usage.mean
+                delta_integ = integ_mean - kernel_summary.integration.mean
+                row = (
+                    f"{method:<{col_method}} "
+                    f"{profile_mean:>{col_metric}.3f} "
+                    f"{task_mean:>{col_metric}.3f} "
+                    f"{integ_mean:>{col_metric}.3f} "
+                    f"{latency_mean:>{col_metric}.3f} "
+                    f"{delta_profile:>+{col_metric+2}.3f} "
+                    f"{delta_task:>+{col_metric+2}.3f} "
+                    f"{delta_integ:>+{col_metric+2}.3f} "
+                    f"{total:>7} "
+                    f"{failed:>7}"
+                )
+            else:
+                row = (
+                    f"{method:<{col_method}} "
+                    f"{profile_mean:>{col_metric}.3f} "
+                    f"{task_mean:>{col_metric}.3f} "
+                    f"{integ_mean:>{col_metric}.3f} "
+                    f"{latency_mean:>{col_metric}.3f} "
+                    f"{total:>7} "
+                    f"{failed:>7}"
+                )
+            print(row)
+
+        print(separator)
+        print()

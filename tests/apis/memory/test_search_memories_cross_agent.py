@@ -3,6 +3,7 @@
 Validates Requirements: 4.1, 4.2, 4.3, 5.1, 5.2, 6.2
 """
 
+import inspect
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -82,6 +83,25 @@ class TestSearchMemoriesBackwardCompat(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             search_memories("a", "q", user_id="   ")
         self.assertIn("user_id", str(ctx.exception))
+
+    def test_signature_includes_user_id_with_none_default(self):
+        """search_memories signature includes user_id parameter with None default."""
+        sig = inspect.signature(search_memories)
+        self.assertIn("user_id", sig.parameters)
+        param = sig.parameters["user_id"]
+        self.assertEqual(param.default, None)
+        # user_id should be keyword-only (after the *)
+        self.assertEqual(param.kind, inspect.Parameter.KEYWORD_ONLY)
+
+    @patch("cerebrum.memory.apis.send_request")
+    def test_user_id_is_stripped_before_sending(self, mock_send):
+        """search_memories with user_id=" alex " strips whitespace to "alex"."""
+        mock_send.return_value = {"response_class": "memory", "search_results": []}
+
+        search_memories("agent", "query", user_id="  alex_chen  ")
+
+        _, query_obj, _ = mock_send.call_args[0]
+        self.assertEqual(query_obj.params["user_id"], "alex_chen")
 
 
 if __name__ == "__main__":
